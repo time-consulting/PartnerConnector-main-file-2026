@@ -2684,37 +2684,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allDeals = await storage.getAllDeals();
       const deal = allDeals.find((r: any) => r.id === dealId);
 
-      if (!referral) {
+      if (!deal) {
         return res.status(404).json({ message: "Deal not found" });
       }
 
-      // Create commission approval for the user
-      const approval = await storage.createCommissionApproval({
-        dealId: dealId,
-        userId: deal.referrerId,
-        commissionAmount: actualCommission,
-        clientBusinessName: deal.businessName,
-        adminNotes: adminNotes || null,
-        ratesData: ratesData ? JSON.stringify(ratesData) : null
-      });
+      // ✅ NEW: Distribute commissions across hierarchy
+      // - Deal creator gets 60% automatically
+      // - System searches for upline referrers in partner_hierarchy
+      // - Level 1 up gets 20% override
+      // - Level 2 up gets 10% override
+      const approvals = await storage.distributeCommissions(
+        dealId,
+        actualCommission,
+        deal.referrerId,
+        deal.businessName,
+        adminNotes,
+        ratesData
+      );
 
-      // Create notification for user
-      await createNotificationForUser(deal.referrerId, {
-        type: 'commission_approval',
-        title: 'Commission Ready for Approval',
-        message: `Your commission of £${actualCommission} for ${referral.businessName} is ready for approval`,
-        dealId: dealId,
-        businessName: deal.businessName
-      });
+      // Create notifications for all recipients
+      for (const approval of approvals) {
+        const commissionTypeLabel = approval.commissionType === 'direct'
+          ? 'Commission'
+          : `Level ${approval.level} Override`;
+
+        const percentageLabel = approval.level === 0 ? '60%' : approval.level === 1 ? '20%' : '10%';
+
+        await createNotificationForUser(approval.userId, {
+          type: 'commission_approval',
+          title: `${commissionTypeLabel} Ready`,
+          message: `Your ${commissionTypeLabel.toLowerCase()} of £${approval.commissionAmount} (${percentageLabel}) for ${deal.businessName} is ready for approval`,
+          dealId: dealId,
+          businessName: deal.businessName
+        });
+      }
 
       res.json({
         success: true,
-        message: "Commission approval created successfully",
-        approval: approval
+        message: `Created ${approvals.length} commission approval${approvals.length > 1 ? 's' : ''}`,
+        approvals: approvals,
+        summary: {
+          total: actualCommission,
+          dealCreator: approvals.find(a => a.level === 0)?.commissionAmount || 0,
+          level1Override: approvals.find(a => a.level === 1)?.commissionAmount || 0,
+          level2Override: approvals.find(a => a.level === 2)?.commissionAmount || 0,
+          companyRevenue: actualCommission - approvals.reduce((sum, a) => sum + Number(a.commissionAmount), 0)
+        }
       });
     } catch (error) {
-      console.error("Error creating commission approval:", error);
-      res.status(500).json({ message: "Failed to create commission approval" });
+      console.error("Error creating commission approvals:", error);
+      res.status(500).json({ message: "Failed to create commission approvals" });
     }
   });
 

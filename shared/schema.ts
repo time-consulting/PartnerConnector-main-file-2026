@@ -275,6 +275,8 @@ export const commissionApprovals = pgTable("commission_approvals", {
   userId: varchar("user_id").notNull(),
   commissionAmount: decimal("commission_amount", { precision: 10, scale: 2 }).notNull(),
   clientBusinessName: varchar("client_business_name"),
+  commissionType: varchar("commission_type").default("direct"), // "direct" (60% to deal creator) or "override" (20%/10% to upline)
+  level: integer("level").default(0), // 0 = direct (deal creator), 1 = level 1 up (20%), 2 = level 2 up (10%)
   approvalStatus: varchar("approval_status").notNull().default("pending"), // pending, approved, rejected
   approvedAt: timestamp("approved_at"),
   paymentStatus: varchar("payment_status").notNull().default("pending"), // pending, processing, completed, failed
@@ -491,12 +493,12 @@ export const referrals = pgTable("referrals", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
 
   partnerId: varchar("partner_id").references(() => users.id, { onDelete: "set null" }),
-  
+
   businessName: varchar("business_name"),
   contactName: varchar("contact_name"),
   contactEmail: varchar("contact_email"),
   contactPhone: varchar("contact_phone"),
-  
+
   status: varchar("status").default("pending"),
 
   createdAt: timestamp("created_at").defaultNow(),
@@ -675,7 +677,7 @@ export const quotes = pgTable("quotes", {
   quoteId: varchar("quote_id").unique(), // Quote ID in format QUOTE-XXXXX (linked to dealId)
   referralId: varchar("referral_id").notNull().references(() => deals.id, { onDelete: "cascade" }),
   version: integer("version").notNull().default(1), // For quote versioning
-  
+
   // Transaction Rates
   creditCardRate: decimal("credit_card_rate", { precision: 5, scale: 2 }), // e.g., 1.49%
   debitCardRate: decimal("debit_card_rate", { precision: 5, scale: 2 }),
@@ -683,28 +685,28 @@ export const quotes = pgTable("quotes", {
   visaBusinessDebitRate: decimal("visa_business_debit_rate", { precision: 5, scale: 2 }).default('1.99'),
   otherBusinessDebitRate: decimal("other_business_debit_rate", { precision: 5, scale: 2 }).default('1.99'),
   amexRate: decimal("amex_rate", { precision: 5, scale: 2 }).default('1.90'),
-  
+
   // Transaction Fees
   secureTransactionFee: decimal("secure_transaction_fee", { precision: 5, scale: 2 }), // in pence, e.g., 5.00p
-  
+
   // Buyout & Savings
   buyoutAmount: decimal("buyout_amount", { precision: 10, scale: 2 }), // £3000 or £500
   estimatedMonthlySaving: decimal("estimated_monthly_saving", { precision: 10, scale: 2 }),
-  
+
   // Card Machines/Devices
   devicePaymentType: varchar("device_payment_type"), // 'pay_once' or 'pay_monthly'
   devices: jsonb("devices").default('[]'), // Array of {type: 'dojo_go'|'dojo_pocket', quantity: number, price: number}
-  
+
   // Optional Extras
   hardwareCare: boolean("hardware_care").default(false), // £5 per device
   settlementType: varchar("settlement_type").default('5_day'), // '5_day' or '7_day' (7 day = £10pm)
   dojoPlan: boolean("dojo_plan").default(false), // £11.99pm with 3 months free trial
-  
+
   // Calculated totals
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }),
   monthlyDeviceCost: decimal("monthly_device_cost", { precision: 10, scale: 2 }),
   oneTimeDeviceCost: decimal("one_time_device_cost", { precision: 10, scale: 2 }),
-  
+
   // Business Type & Commission Tracking
   businessType: varchar("business_type").default("new_to_card"), // switcher, new_to_card
   billUploadRequired: boolean("bill_upload_required").default(false),
@@ -713,10 +715,10 @@ export const quotes = pgTable("quotes", {
   commissionPaid: boolean("commission_paid").default(false),
   commissionPaidDate: timestamp("commission_paid_date"),
   stripePaymentId: varchar("stripe_payment_id"),
-  
+
   // Legacy field for backwards compatibility
   ratesData: jsonb("rates_data"), // Detailed rate breakdown - keeping for old quotes
-  
+
   validUntil: timestamp("valid_until"),
   sentAt: timestamp("sent_at"),
   viewedAt: timestamp("viewed_at"),
@@ -1469,6 +1471,6 @@ export function mapDealStageToCustomerJourney(dealStage: string): string {
     'completed': 'complete',
     'declined': 'declined',
   };
-  
+
   return mapping[dealStage] || 'review_quote';
 }

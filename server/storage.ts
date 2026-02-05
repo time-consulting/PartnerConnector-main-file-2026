@@ -544,31 +544,25 @@ export class DatabaseStorage implements IStorage {
 
     const referralChain: { userId: string; level: number; commissionPercentage: number }[] = [];
 
+    // Level 1: Direct referrer gets 20% override commission
     referralChain.push({
       userId: referrerUserId,
       level: 1,
-      commissionPercentage: 60.00
+      commissionPercentage: 20.00  // Override for level 1 up
     });
 
+    // Level 2: Referrer's referrer gets 10% override commission
     if (referrer.parentPartnerId) {
       const level2User = await this.getUser(referrer.parentPartnerId);
       if (level2User) {
         referralChain.push({
           userId: level2User.id,
           level: 2,
-          commissionPercentage: 20.00
+          commissionPercentage: 10.00  // Override for level 2 up
         });
 
-        if (level2User.parentPartnerId) {
-          const level3User = await this.getUser(level2User.parentPartnerId);
-          if (level3User) {
-            referralChain.push({
-              userId: level3User.id,
-              level: 3,
-              commissionPercentage: 10.00
-            });
-          }
-        }
+        // No level 3 - only 2 levels of override commissions
+        // Deal creator gets 60% directly (not tracked in hierarchy)
       }
     }
 
@@ -3361,6 +3355,92 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(commissionApprovals)
       .orderBy(desc(commissionApprovals.createdAt));
+  }
+
+  /**
+   * Distribute commissions for a deal across the referral hierarchy
+   * Creates commission approvals for:
+   * - Deal creator: 60% (direct commission)
+   * - Level 1 up (referrer): 20% (override commission)
+   * - Level 2 up (referrer's referrer): 10% (override commission)
+   * 
+   * @param dealId - The deal ID
+   * @param totalCommission - Total commission amount from the deal
+   * @param dealCreatorId - User who created the deal
+   * @param clientBusinessName - Business name for the deal
+   * @param adminNotes - Optional admin notes
+   * @param ratesData - Optional rates data
+   * @returns Array of created commission approvals
+   */
+  async distributeCommissions(
+    dealId: string,
+    totalCommission: number,
+    dealCreatorId: string,
+    clientBusinessName?: string,
+    adminNotes?: string | null,
+    ratesData?: any
+  ): Promise<CommissionApproval[]> {
+    const approvals: CommissionApproval[] = [];
+
+    // 1. Create commission for deal creator (60%)
+    const creatorCommissionAmount = Number((totalCommission * 0.60).toFixed(2));
+    const creatorApproval = await this.createCommissionApproval({
+      dealId,
+      userId: dealCreatorId,
+      commissionAmount: creatorCommissionAmount,
+      clientBusinessName,
+      commissionType: 'direct',  // Direct commission
+      level: 0,  // Deal creator = level 0
+      adminNotes,
+      ratesData: ratesData ? JSON.stringify(ratesData) : null,
+    });
+    approvals.push(creatorApproval);
+
+    console.log(`[COMMISSION] Created direct commission: £${creatorCommissionAmount} (60%) for user ${dealCreatorId}`);
+
+    // 2. Get upline from partner_hierarchy
+    const uplineEntries = await db
+      .select()
+      .from(partnerHierarchy)
+      .where(eq(partnerHierarchy.childId, dealCreatorId))
+      .orderBy(partnerHierarchy.level);
+
+    // 3. Create override commissions for upline
+    for (const entry of uplineEntries) {
+      let overridePercentage = 0;
+
+      if (entry.level === 1) {
+        overridePercentage = 0.20;  // 20% for level 1 up
+      } else if (entry.level === 2) {
+        overridePercentage = 0.10;  // 10% for level 2 up
+      }
+      // Level 3+ gets 0%
+
+      if (overridePercentage > 0) {
+        const overrideCommissionAmount = Number((totalCommission * overridePercentage).toFixed(2));
+        const overrideApproval = await this.createCommissionApproval({
+          dealId,
+          userId: entry.parentId,
+          commissionAmount: overrideCommissionAmount,
+          clientBusinessName,
+          commissionType: 'override',  // Override commission
+          level: entry.level,
+          adminNotes: `Level ${entry.level} override commission`,
+          ratesData: ratesData ? JSON.stringify(ratesData) : null,
+        });
+        approvals.push(overrideApproval);
+
+        console.log(`[COMMISSION] Created level ${entry.level} override: £${overrideCommissionAmount} (${overridePercentage * 100}%) for user ${entry.parentId}`);
+      }
+    }
+
+    // 4. Calculate and log company revenue
+    const totalPaid = approvals.reduce((sum, a) => sum + Number(a.commissionAmount), 0);
+    const companyRevenue = Number((totalCommission - totalPaid).toFixed(2));
+
+    console.log(`[COMMISSION] Deal ${dealId} - Total: £${totalCommission}, Paid: £${totalPaid} (${approvals.length} recipients), Company Revenue: £${companyRevenue}`);
+
+    return approvals;
   }
 
   async updateCommissionApprovalStatus(approvalId: string, status: string): Promise<CommissionApproval> {
