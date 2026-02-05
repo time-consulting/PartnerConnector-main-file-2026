@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import type { Opportunity } from "@shared/schema";
 import Sidebar from "@/components/sidebar";
+import { ProfessionalOpportunityForm } from "@/components/professional-opportunity-form";
 
 const OpportunityKanbanView = lazy(() => import("@/components/opportunity-kanban-view"));
 
@@ -1018,14 +1019,9 @@ export default function OpportunitiesPage() {
             open={!!selectedOpportunity}
             onOpenChange={(open) => !open && setSelectedOpportunity(null)}
           >
-            <DialogContent className="!w-[98vw] !max-w-[98vw] !h-[95vh] !max-h-[95vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>
-                  Edit Opportunity: {selectedOpportunity?.businessName}
-                </DialogTitle>
-              </DialogHeader>
+            <DialogContent className="!w-[98vw] !max-w-[98vw] !h-[95vh] !max-h-[95vh] overflow-hidden p-0">
               {selectedOpportunity && (
-                <OpportunityForm
+                <ProfessionalOpportunityForm
                   key={selectedOpportunity.id}
                   opportunity={selectedOpportunity}
                   onClose={() => setSelectedOpportunity(null)}
