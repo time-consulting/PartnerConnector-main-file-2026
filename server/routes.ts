@@ -19,7 +19,7 @@ import Stripe from 'stripe';
 import { eq, desc, and, gte, lte } from "drizzle-orm";
 import { db } from "./db";
 
-const upload = multer({ 
+const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
@@ -35,7 +35,7 @@ async function submitToGHL(referral: any) {
 
     const ghlApiKey = process.env.GHL_API_KEY;
     const locationId = process.env.GHL_LOCATION_ID;
-    
+
     // Create contact/lead in GoHighLevel
     const contactData = {
       firstName: deal.businessOwnerName?.split(' ')[0] || 'Business',
@@ -73,22 +73,22 @@ async function submitToGHL(referral: any) {
 
     const result = await response.json();
     console.log(`Referral ${referral.id} successfully submitted to GHL. Contact ID: ${result.contact?.id}`);
-    
+
     // Add to appropriate workflow/campaign if configured
     if (process.env.GHL_WORKFLOW_ID && result.contact?.id) {
       await addToGHLWorkflow(result.contact.id, process.env.GHL_WORKFLOW_ID, ghlApiKey);
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       ghlContactId: result.contact?.id,
       ghlResponse: result
     };
   } catch (error) {
     console.error(`Failed to submit referral ${referral.id} to GHL:`, error);
     // Don't fail the entire deal submission if GHL fails
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       ghlContactId: null
     };
@@ -130,7 +130,7 @@ async function submitWaitlistToGHL(waitlistEntry: any) {
 
     // Submit to GHL Webhook (more reliable than API)
     const webhookUrl = `https://services.leadconnectorhq.com/hooks/${locationId}/webhook-trigger/d30b9f55-149f-4e5d-8b9a-9116b0d82415`;
-    
+
     const webhookData = {
       source: 'PartnerConnector Waitlist',
       firstName: waitlistEntry.firstName,
@@ -168,16 +168,16 @@ async function submitWaitlistToGHL(waitlistEntry: any) {
     const result = await response.json();
     console.log(`Waitlist entry ${waitlistEntry.id} successfully submitted to GHL webhook:`, result);
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       ghlContactId: 'webhook_triggered',
       ghlResponse: result
     };
   } catch (error) {
     console.error(`Failed to submit waitlist entry ${waitlistEntry.id} to GHL:`, error);
     // Don't fail the entire waitlist submission if GHL fails
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
       ghlContactId: null
     };
@@ -249,7 +249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Custom auth routes
   const { z } = await import('zod');
-  
+
   // Register endpoint
   app.post('/api/auth/register', async (req: any, res) => {
     try {
@@ -265,7 +265,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email, password, firstName, lastName, referralCode } = data;
 
       console.log('[AUTH] Registration attempt:', email);
-      
+
       // Create user with credentials
       const user = await storage.createUserWithCredentials(
         email,
@@ -276,14 +276,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Set session
       req.session.userId = user.id;
-      
+
       // Clear referral code from session
       delete req.session.referralCode;
 
       console.log('[AUTH] Registration successful:', user.id, user.email);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         user: {
           id: user.id,
           email: user.email,
@@ -319,43 +319,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user exists first
       const existingUser = await storage.getUserByEmail(email);
-      
+
       // Check for account lockout
       if (existingUser && existingUser.lockoutUntil && existingUser.lockoutUntil > new Date()) {
         const lockoutMinutes = Math.ceil((existingUser.lockoutUntil.getTime() - Date.now()) / 60000);
-        return res.status(429).json({ 
+        return res.status(429).json({
           message: `Account locked due to too many failed login attempts. Try again in ${lockoutMinutes} minute(s).`,
           lockoutUntil: existingUser.lockoutUntil
         });
       }
 
       const user = await storage.verifyLogin(email, password);
-      
+
       if (!user) {
         // Increment login attempts for failed login
         if (existingUser) {
           const attempts = (existingUser.loginAttempts || 0) + 1;
           const updates: any = { loginAttempts: attempts };
-          
+
           // Lock account after 5 failed attempts for 15 minutes
           if (attempts >= 5) {
             updates.lockoutUntil = new Date(Date.now() + 15 * 60 * 1000);
             await storage.updateUser(existingUser.id, updates);
-            return res.status(429).json({ 
+            return res.status(429).json({
               message: 'Account locked due to too many failed login attempts. Try again in 15 minutes.',
               lockoutUntil: updates.lockoutUntil
             });
           }
-          
+
           await storage.updateUser(existingUser.id, updates);
         }
-        
+
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
       // Check if email is verified
       if (!user.emailVerified) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           message: 'Please verify your email before logging in. Check your inbox for the verification link.',
           emailVerified: false
         });
@@ -373,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('[AUTH] Login successful:', user.id, user.email);
 
-      res.json({ 
+      res.json({
         success: true,
         user: {
           id: user.id,
@@ -412,9 +412,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const { email } = schema.parse(req.body);
-      
+
       const user = await storage.getUserByEmail(email);
-      
+
       // Always return success even if user doesn't exist (security best practice)
       if (!user) {
         return res.json({ success: true, message: 'If an account exists, a reset link has been sent' });
@@ -460,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { token, password } = schema.parse(req.body);
 
       const user = await storage.getUserByResetToken(token);
-      
+
       if (!user || !user.passwordResetExpires || user.passwordResetExpires < new Date()) {
         return res.status(400).json({ message: 'Invalid or expired reset token' });
       }
@@ -499,7 +499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { token } = schema.parse(req.body);
 
       const user = await storage.getUserByVerificationToken(token);
-      
+
       if (!user) {
         return res.status(400).json({ message: 'Invalid verification token' });
       }
@@ -536,9 +536,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const { email } = schema.parse(req.body);
-      
+
       const user = await storage.getUserByEmail(email);
-      
+
       if (!user || user.emailVerified) {
         return res.json({ success: true, message: 'If an account exists and is unverified, a verification email has been sent' });
       }
@@ -574,9 +574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/test/webhooks', async (req: any, res) => {
     try {
       console.log('🧪 Testing webhooks...');
-      
+
       const results = [];
-      
+
       // Test email verification webhook
       const emailVerificationResult = await ghlEmailService.sendEmailVerification(
         'test@example.com',
@@ -585,7 +585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'User'
       );
       results.push({ event: 'email_verification', success: emailVerificationResult });
-      
+
       // Test welcome email webhook
       const welcomeResult = await ghlEmailService.sendWelcomeEmail(
         'test@example.com',
@@ -593,7 +593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'User'
       );
       results.push({ event: 'welcome_email', success: welcomeResult });
-      
+
       // Test password reset webhook
       const passwordResetResult = await ghlEmailService.sendPasswordResetEmail(
         'test@example.com',
@@ -602,7 +602,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'User'
       );
       results.push({ event: 'password_reset', success: passwordResetResult });
-      
+
       // Test quote notification webhook
       const quoteResult = await ghlEmailService.sendQuoteNotification(
         'test@example.com',
@@ -612,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'User'
       );
       results.push({ event: 'quote_notification', success: quoteResult });
-      
+
       // Test commission notification webhook
       const commissionResult = await ghlEmailService.sendCommissionNotification(
         'test@example.com',
@@ -622,13 +622,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'User'
       );
       results.push({ event: 'commission_paid', success: commissionResult });
-      
+
       console.log('✅ Webhook test results:', results);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'All test webhooks triggered. Check your GHL webhook logs.',
-        results 
+        results
       });
     } catch (error: any) {
       console.error('[TEST] Webhook test error:', error);
@@ -640,7 +640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/webhooks/ghl/team-invite', async (req: any, res) => {
     try {
       const { email, role, invitedBy, teamName } = req.body;
-      
+
       // Log the webhook data for debugging
       console.log('GHL Team Invite Webhook received:', {
         email,
@@ -715,16 +715,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Return success response to acknowledge webhook
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Team invitation webhook processed',
         data: webhookData
       });
     } catch (error) {
       console.error('GHL webhook error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Failed to process team invitation webhook' 
+      res.status(500).json({
+        success: false,
+        message: 'Failed to process team invitation webhook'
       });
     }
   });
@@ -739,11 +739,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = req.session.userId;
       let user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       // Auto-generate referralCode if user doesn't have one
       if (!user.referralCode) {
         // Check if user has required profile information
@@ -753,7 +753,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             await storage.generatePartnerId(userId);
             user = await storage.getUser(userId);
           }
-          
+
           // Set referralCode to partnerId
           if (user && user.partnerId && !user.referralCode) {
             await storage.updateUser(userId, { referralCode: user.partnerId });
@@ -762,14 +762,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         // If firstName/lastName are missing, skip generation - it will happen later when they complete their profile
       }
-      
+
       // Add impersonation status to response
       const userWithImpersonation = {
         ...user,
         impersonating: req.session.impersonating || false,
         originalAdminId: req.session.originalAdminId || null
       };
-      
+
       res.json(userWithImpersonation);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -782,12 +782,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const updateData = req.body;
-      
+
       const updatedUser = await storage.upsertUser({
         id: userId,
         ...updateData,
       });
-      
+
       res.json(updatedUser);
     } catch (error) {
       console.error("Error updating user:", error);
@@ -800,11 +800,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { firstName, lastName, profession, company, clientBaseSize, phone } = req.body;
-      
+
       if (!firstName || !lastName || !profession || !company || !clientBaseSize || !phone) {
         return res.status(400).json({ message: "All fields are required to complete onboarding" });
       }
-      
+
       // Update user profile with onboarding data
       let user = await storage.upsertUser({
         id: userId,
@@ -816,19 +816,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         phone,
         hasCompletedOnboarding: true,
       });
-      
+
       // Generate partner ID if it doesn't exist
       if (!user.partnerId) {
         await storage.generatePartnerId(userId);
         user = await storage.getUser(userId);
       }
-      
+
       // Set referralCode to partnerId if not already set
       if (user && user.partnerId && !user.referralCode) {
         await storage.updateUser(userId, { referralCode: user.partnerId });
         user = await storage.getUser(userId);
       }
-      
+
       res.json({ success: true, user });
     } catch (error) {
       console.error("Error completing onboarding:", error);
@@ -841,19 +841,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       if (user.partnerId) {
         return res.status(400).json({ message: "Partner ID already exists", partnerId: user.partnerId });
       }
-      
+
       if (!user.firstName || !user.lastName) {
         return res.status(400).json({ message: "First name and last name are required to generate Partner ID" });
       }
-      
+
       const partnerId = await storage.generatePartnerId(userId);
       res.json({ partnerId, message: "Partner ID generated successfully" });
     } catch (error) {
@@ -880,9 +880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validationResult = insertWaitlistSchema.safeParse(req.body);
       if (!validationResult.success) {
         const formattedError = fromZodError(validationResult.error);
-        return res.status(400).json({ 
-          message: "Validation failed", 
-          errors: formattedError.details 
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: formattedError.details
         });
       }
 
@@ -891,7 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if email already exists in waitlist
       const existingEntry = await storage.getWaitlistEntryByEmail(waitlistData.email);
       if (existingEntry) {
-        return res.status(409).json({ 
+        return res.status(409).json({
           message: "Email already registered on waitlist",
           status: existingEntry.status
         });
@@ -904,7 +904,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (dbError: any) {
         // Handle database unique constraint violation (concurrent submissions)
         if (dbError.code === '23505' && dbError.constraint === 'waitlist_email_unique') {
-          return res.status(409).json({ 
+          return res.status(409).json({
             message: "Email already registered on waitlist",
             status: "pending"
           });
@@ -915,7 +915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Submit to Go High Level CRM
       const ghlResult = await submitWaitlistToGHL(entry);
-      
+
       // Log the waitlist submission (mask email for privacy)
       const maskedEmail = entry.email.replace(/(.{2}).*(@.*)/, '$1***$2');
       console.log('Waitlist submission:', {
@@ -929,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString()
       });
 
-      res.status(201).json({ 
+      res.status(201).json({
         message: "Successfully joined waitlist",
         id: entry.id,
         status: entry.status,
@@ -961,11 +961,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const deal = await storage.createDealWithLevel(validation.data, userId);
-      
+
       // Get the submitter's name for notifications
       const submitter = await storage.getUser(userId);
       const submitterName = submitter ? `${submitter.firstName || ''} ${submitter.lastName || ''}`.trim() || submitter.email : 'A partner';
-      
+
       // Create notification for deal submission (notify the partner)
       await createNotificationForUser(userId, {
         type: 'status_update',
@@ -974,10 +974,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         dealId: deal.id,
         businessName: deal.businessName
       });
-      
+
       // Notify all admins of the new deal
       await notifyAdminsOfNewDeal(deal, submitterName);
-      
+
       // Submit to GoHighLevel (GHL) for processing
       try {
         await submitToGHL(deal);
@@ -986,7 +986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error(`Failed to submit deal ${deal.id} to GHL:`, ghlError);
         // Continue processing even if GHL submission fails
       }
-      
+
       console.log(`Deal created: ${deal.dealId} for ${deal.businessName}`);
       res.json(deal);
     } catch (error) {
@@ -1012,11 +1012,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { productType } = req.query;
       let dealsWithQuotes = await storage.getDealsWithQuotes(userId);
-      
+
       if (productType) {
         dealsWithQuotes = dealsWithQuotes.filter((deal: any) => deal.productType === productType);
       }
-      
+
       res.json(dealsWithQuotes);
     } catch (error) {
       console.error("Error fetching deals with quotes:", error);
@@ -1029,13 +1029,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const dealId = req.params.id;
       const files = req.files;
-      
+
       // Get the deal to get the businessName
       const deal = await storage.getDealById(dealId);
       if (!deal) {
         return res.status(404).json({ message: "Deal not found" });
       }
-      
+
       if (!files || !Array.isArray(files) || files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
       }
@@ -1054,8 +1054,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const billUploads = await Promise.all(uploadPromises);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: `${files.length} file(s) uploaded successfully`,
         uploads: billUploads
       });
@@ -1157,7 +1157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dealId } = req.params;
       const isAdmin = req.user.isAdmin;
-      
+
       // Ownership guardrail: ensure user owns this deal or is admin
       const deal = await storage.getDealById(dealId);
       if (!deal) {
@@ -1166,7 +1166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isAdmin && deal.referrerId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to view messages for this deal" });
       }
-      
+
       // Use unified messaging system that pulls from both sources
       const messages = await storage.getUnifiedDealMessages(dealId);
       res.json(messages);
@@ -1181,27 +1181,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dealId } = req.params;
       const deal = await storage.getDealById(dealId);
-      
+
       if (!deal) {
         return res.status(404).json({ message: "Deal not found" });
       }
-      
+
       // Ownership guardrail: ensure user owns this deal or is admin
       const isAdmin = req.user.isAdmin;
       if (!isAdmin && deal.referrerId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to send reminder for this deal" });
       }
-      
+
       // Get the signup details for client info
       const signupDetails = await storage.getSignupDetailsByDealId(dealId);
       const clientEmail = signupDetails?.email || deal.businessEmail;
       const clientFirstName = signupDetails?.firstName;
       const clientLastName = signupDetails?.lastName;
-      
+
       if (!clientEmail) {
         return res.status(400).json({ message: "No client email found for this deal" });
       }
-      
+
       // Send reminder email via GoHighLevel
       const { ghlEmailService } = await import('./ghlEmailService');
       const emailSent = await ghlEmailService.sendClientReminder(
@@ -1210,7 +1210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clientFirstName,
         clientLastName
       );
-      
+
       // Log the reminder in deal messages
       await storage.createDealMessage({
         dealId: dealId,
@@ -1221,9 +1221,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authorType: 'partner',
         messageType: 'system'
       });
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: emailSent ? "Reminder sent successfully" : "Reminder logged (email service not configured)"
       });
     } catch (error) {
@@ -1236,23 +1236,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dealId } = req.params;
       const { message } = req.body;
-      
+
       if (!message) {
         return res.status(400).json({ message: "Message is required" });
       }
-      
+
       const isAdmin = req.user.isAdmin;
       const deal = await storage.getDealById(dealId);
-      
+
       if (!deal) {
         return res.status(404).json({ message: "Deal not found" });
       }
-      
+
       // Ownership guardrail: ensure user owns this deal or is admin
       if (!isAdmin && deal.referrerId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to message on this deal" });
       }
-      
+
       // Create message in the dealMessages table directly with default type='chat'
       const newMessage = await storage.createDealMessage({
         dealId: dealId,
@@ -1263,7 +1263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         messageType: 'chat',
         message: message,
       });
-      
+
       // Create notification for the other party
       if (isAdmin) {
         // Notify the partner when admin sends a message
@@ -1291,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       }
-      
+
       res.json({ success: true, message: newMessage });
     } catch (error) {
       console.error("Error creating deal message:", error);
@@ -1303,7 +1303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const quoteId = req.params.id;
       const signupData = req.body;
-      
+
       // Get the quote to find the referral ID
       const quote = await storage.getQuoteById(quoteId);
       if (!quote) {
@@ -1312,7 +1312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Save the signup information
       await storage.saveQuoteSignupInfo(quoteId, quote.referralId, signupData);
-      
+
       return res.json({ success: true });
     } catch (error) {
       console.error("Error saving signup info:", error);
@@ -1332,15 +1332,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const quoteId = req.params.id;
       const isAdmin = req.user.isAdmin;
-      
+
       // Get the quote to find the deal ID (quotes.referral_id is actually the deal_id)
       const quote = await storage.getQuoteById(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-      
+
       const dealId = quote.referralId; // referralId in quotes is actually the deal ID
-      
+
       // Ownership check: ensure user owns this deal or is admin
       const deal = await storage.getDealById(dealId);
       if (!deal) {
@@ -1349,7 +1349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isAdmin && deal.referrerId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to message on this deal" });
       }
-      
+
       // Write to deal_messages with type='quote_qa' (single messaging system)
       const newMessage = await storage.createDealMessage({
         dealId: dealId,
@@ -1386,15 +1386,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const quoteId = req.params.id;
       const isAdmin = req.user.isAdmin;
-      
+
       // Get the quote to find the deal ID
       const quote = await storage.getQuoteById(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-      
+
       const dealId = quote.referralId;
-      
+
       // Ownership guardrail: ensure user owns this deal or is admin
       const deal = await storage.getDealById(dealId);
       if (!deal) {
@@ -1403,19 +1403,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!isAdmin && deal.referrerId !== req.user.id) {
         return res.status(403).json({ message: "Not authorized to view messages for this quote" });
       }
-      
+
       // Get messages from legacy quote_qa table for backwards compatibility
       // This will be deprecated in Phase 2
       const legacyMessages = await storage.getQuoteQA(quoteId);
-      
+
       // Also get deal_messages with type='quote_qa' for new messages
       const dealMessages = await storage.getDealMessagesByType(dealId, 'quote_qa');
-      
+
       // Merge both sources, sorted by createdAt
-      const allMessages = [...legacyMessages, ...dealMessages].sort((a, b) => 
+      const allMessages = [...legacyMessages, ...dealMessages].sort((a, b) =>
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
-      
+
       res.json(allMessages);
     } catch (error) {
       console.error("Error fetching Q&A messages:", error);
@@ -1439,7 +1439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const file = req.file;
       const { documentType } = req.body;
-      
+
       if (!file || !documentType) {
         if (!res.headersSent) {
           return res.status(400).json({ message: "Missing file or document type" });
@@ -1493,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quotes/:quoteId/documents/:docId/download', requireAuth, async (req: any, res) => {
     try {
       const document = await storage.getQuoteBillUploadById(req.params.docId);
-      
+
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
@@ -1525,7 +1525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/quotes/:id/mark-ntc', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const quote = await storage.getQuoteById(req.params.id);
-      
+
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
@@ -1548,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { reason } = req.body;
       const quote = await storage.getQuoteById(req.params.id);
-      
+
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
@@ -1559,7 +1559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adminNotes: `Quote cancelled. Reason: ${reason}`,
         updatedAt: new Date()
       });
-      
+
       // Update the deal stage to declined (will auto-sync customerJourneyStatus)
       if (quote.referralId) {
         await storage.updateDeal(quote.referralId, {
@@ -1571,12 +1571,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Post cancellation message to quote Q&A
       await fetch(`${req.protocol}://${req.get('host')}/api/quotes/${req.params.id}/qa`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Cookie': req.headers.cookie || ''
         },
-        body: JSON.stringify({ 
-          message: `❌ **Quote Cancelled**\n\nThis quote has been cancelled.\n\n**Reason:** ${reason}` 
+        body: JSON.stringify({
+          message: `❌ **Quote Cancelled**\n\nThis quote has been cancelled.\n\n**Reason:** ${reason}`
         }),
       });
 
@@ -1592,7 +1592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { fileName, fileSize, fileType } = req.body;
       const quote = await storage.getQuoteById(req.params.id);
-      
+
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
@@ -1851,7 +1851,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const deals = await storage.getAllDeals();
       const deal = deals.find((d: any) => d.id === quote.referralId);
-      
+
       if (!deal || deal.dealStage !== 'approved') {
         return res.status(400).json({ message: "Only approved deals can be moved to pending payments" });
       }
@@ -1863,9 +1863,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Quote ${quoteId} moved to pending payments by admin ${req.user.email}`);
 
-      res.json({ 
-        success: true, 
-        message: "Deal moved to pending payments" 
+      res.json({
+        success: true,
+        message: "Deal moved to pending payments"
       });
     } catch (error) {
       console.error("Error moving deal to payments:", error);
@@ -1947,7 +1947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { amount, partnerEmail, partnerName } = req.body;
-      
+
       if (!amount || !partnerEmail) {
         return res.status(400).json({ message: "Amount and partner email are required" });
       }
@@ -1972,10 +1972,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Record the payment in the database
       await storage.recordCommissionPayment(req.params.id, paymentIntent.id);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         paymentIntentId: paymentIntent.id,
-        clientSecret: paymentIntent.client_secret 
+        clientSecret: paymentIntent.client_secret
       });
     } catch (error: any) {
       console.error("Error processing commission payment:", error);
@@ -1989,11 +1989,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const userId = req.user.id;
       const updateData = req.body;
-      
+
       // Get current referral and verify ownership
       const referrals = await storage.getDealsByUserId(userId);
       const currentReferral = referrals.find(r => r.id === id);
-      
+
       if (!currentReferral) {
         return res.status(404).json({ message: "Deal not found or you don't have permission to update it" });
       }
@@ -2092,10 +2092,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const notifications = await storage.getNotificationsByUserId(userId);
-      
+
       // Count unread notifications
       const unreadCount = notifications.filter((n: any) => !n.read).length;
-      
+
       res.json({
         notifications,
         unreadCount,
@@ -2111,10 +2111,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { id } = req.params;
-      
+
       // Mark notification as read (with userId for security)
       await storage.markNotificationAsRead(id, userId);
-      
+
       // Notify WebSocket clients
       wsManager.sendNotificationToUser(userId, {
         type: "notificationRead",
@@ -2122,7 +2122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "",
         metadata: { notificationId: id }
       });
-      
+
       res.json({ success: true, message: "Notification marked as read" });
     } catch (error) {
       console.error("Error marking notification as read:", error);
@@ -2133,10 +2133,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/notifications/read-all', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      
+
       // Mark all notifications as read
       await storage.markAllNotificationsAsRead(userId);
-      
+
       // Notify WebSocket clients
       wsManager.sendNotificationToUser(userId, {
         type: "allNotificationsRead",
@@ -2144,7 +2144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "",
         metadata: {}
       });
-      
+
       res.json({ success: true, message: "All notifications marked as read" });
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
@@ -2192,16 +2192,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/team-analytics', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      
+
       // Get team members under this user (direct and indirect)
       const teamMembers = await storage.getTeamHierarchy(userId);
-      
+
       // Calculate performance metrics
       const totalTeamMembers = teamMembers.length;
       const totalRevenue = teamMembers.reduce((sum, m) => sum + (m.totalRevenue || 0), 0);
       const activeMembers = teamMembers.filter(m => m.hasSubmittedDeals > 0).length;
       const avgConversionRate = activeMembers > 0 ? (activeMembers / totalTeamMembers) * 100 : 0;
-      
+
       // Format team member data
       const formattedMembers = teamMembers.map((member, index) => ({
         id: member.id,
@@ -2218,7 +2218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastActive: member.lastActiveAt || member.createdAt,
         performanceScore: Math.min(100, Math.round((member.totalRevenue || 0) / 100)),
       }));
-      
+
       const analytics = {
         performanceMetrics: {
           totalTeamMembers,
@@ -2231,7 +2231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         teamMembers: formattedMembers,
         chartData: [], // TODO: Implement historical data
       };
-      
+
       res.json(analytics);
     } catch (error) {
       console.error("Error fetching team analytics:", error);
@@ -2244,21 +2244,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const { email, phone, firstName, lastName, role = 'member', message } = req.body;
-      
+
       if (!email && !phone) {
         return res.status(400).json({ message: "Either email or phone number is required" });
       }
-      
+
       // Generate invite link with user's referral code
       const inviteCode = user.referralCode || user.partnerId || userId;
       const inviteUrl = `${req.protocol}://${req.get('host')}/signup?ref=${inviteCode}`;
-      
+
       // Send invite via GHL if configured
       if (process.env.GHL_API_KEY && process.env.GHL_LOCATION_ID) {
         try {
@@ -2277,7 +2277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             tags: ['Team Invitation', `Role: ${role}`, 'PartnerConnector', `Invited by: ${user.firstName}`]
           };
-          
+
           const response = await fetch(`https://services.leadconnectorhq.com/locations/${process.env.GHL_LOCATION_ID}/contacts`, {
             method: 'POST',
             headers: {
@@ -2287,10 +2287,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             body: JSON.stringify(inviteData)
           });
-          
+
           if (response.ok) {
             const ghlResponse = await response.json();
-            
+
             // Trigger workflow if configured
             if (process.env.GHL_WORKFLOW_ID && ghlResponse.contact?.id) {
               const workflowResponse = await fetch(`https://services.leadconnectorhq.com/contacts/${ghlResponse.contact.id}/workflow/${process.env.GHL_WORKFLOW_ID}`, {
@@ -2301,12 +2301,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   'Version': '2021-07-28'
                 }
               });
-              
+
               if (!workflowResponse.ok) {
                 console.error('Failed to trigger GHL workflow:', await workflowResponse.text());
               }
             }
-            
+
             console.log(`Invitation sent via GHL to ${email || phone}. Contact ID: ${ghlResponse.contact?.id}`);
           } else {
             console.error('GHL API error:', await response.text());
@@ -2315,7 +2315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Error sending invitation via GHL:', error);
         }
       }
-      
+
       // Store invitation in database for tracking
       // TODO: Implement trackInvitation in storage
       // await storage.trackInvitation({
@@ -2329,7 +2329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //   message: message || null,
       //   sentAt: new Date()
       // });
-      
+
       // Create notification for the inviter
       await createNotification(userId, {
         type: 'team_invite_sent',
@@ -2340,7 +2340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           role: role
         }
       });
-      
+
       res.json({
         success: true,
         message: 'Invitation sent successfully',
@@ -2352,7 +2352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to send invitation" });
     }
   });
-  
+
   // Get pending team invitations
   app.get('/api/team-invitations', requireAuth, async (req: any, res) => {
     try {
@@ -2365,32 +2365,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch team invitations" });
     }
   });
-  
+
   // Resend team invitation
   app.patch('/api/team-invitations/:inviteId/resend', requireAuth, async (req: any, res) => {
     try {
       const { inviteId } = req.params;
       const userId = req.user.id;
-      
+
       // TODO: Implement invitation resend
       console.log(`Resending invitation ${inviteId} for user ${userId}`);
-      
+
       res.json({ success: true, message: "Invitation resent successfully" });
     } catch (error) {
       console.error("Error resending invitation:", error);
       res.status(500).json({ message: "Failed to resend invitation" });
     }
   });
-  
+
   // Cancel team invitation  
   app.delete('/api/team-invitations/:inviteId', requireAuth, async (req: any, res) => {
     try {
       const { inviteId } = req.params;
       const userId = req.user.id;
-      
+
       // TODO: Implement invitation cancellation
       console.log(`Cancelling invitation ${inviteId} for user ${userId}`);
-      
+
       res.json({ success: true, message: "Invitation cancelled successfully" });
     } catch (error) {
       console.error("Error cancelling invitation:", error);
@@ -2403,11 +2403,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const businessName = req.body.businessName;
       const files = req.files;
-      
+
       if (!businessName) {
         return res.status(400).json({ message: "Business name is required" });
       }
-      
+
       if (!files || !Array.isArray(files) || files.length === 0) {
         return res.status(400).json({ message: "No files uploaded" });
       }
@@ -2426,8 +2426,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const billUploads = await Promise.all(uploadPromises);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: `${files.length} file(s) uploaded successfully`,
         uploads: billUploads
       });
@@ -2467,13 +2467,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/bills', async (req: any, res) => {
     try {
       const businessName = req.query.businessName as string | undefined;
-      
+
       if (!businessName) {
         return res.status(400).json({ message: "Business name is required" });
       }
-      
+
       const bills = await storage.getBillUploadsByBusinessName(businessName);
-      
+
       res.json(bills);
     } catch (error) {
       console.error("Error fetching bills:", error);
@@ -2527,9 +2527,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Store additional details (you may want to create a separate table for this)
       console.log('Additional details received for referral:', dealId, additionalDetails);
 
-      res.json({ 
+      res.json({
         success: true,
-        message: "Additional details submitted successfully" 
+        message: "Additional details submitted successfully"
       });
     } catch (error) {
       console.error("Error submitting additional details:", error);
@@ -2542,11 +2542,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const user = await storage.getUser(userId);
-      
+
       if (!user?.isAdmin) {
         return res.status(403).json({ message: "Admin access required" });
       }
-      
+
       next();
     } catch (error) {
       console.error("Error checking admin access:", error);
@@ -2559,7 +2559,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -2570,19 +2570,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate a simple reset token (in production, use crypto.randomBytes)
       const resetToken = `rst_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       // Send password reset email
       const emailSent = await emailService.sendPasswordResetEmail(user.email, resetToken);
-      
+
       if (emailSent) {
-        res.json({ 
-          success: true, 
-          message: `Password reset email sent to ${user.email}` 
+        res.json({
+          success: true,
+          message: `Password reset email sent to ${user.email}`
         });
       } else {
-        res.json({ 
-          success: false, 
-          message: "Email service not configured. Password reset email could not be sent." 
+        res.json({
+          success: false,
+          message: "Email service not configured. Password reset email could not be sent."
         });
       }
     } catch (error) {
@@ -2595,7 +2595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/admin/payments/:id', requireAuth, requireAdmin, async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Try to delete from commission_payments first
       const cp = await db.select().from(commissionPayments).where(eq(commissionPayments.id, id)).limit(1);
       if (cp.length > 0) {
@@ -2618,7 +2618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ RATES MANAGEMENT ENDPOINTS ============
-  
+
   // Get all rates
   app.get('/api/admin/rates', requireAuth, requireAdmin, async (req: any, res) => {
     try {
@@ -2666,7 +2666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ COMMISSION APPROVAL ENDPOINTS ============
-  
+
   // Create commission approval when admin enters actual commission
   app.post('/api/admin/referrals/:dealId/create-commission-approval', requireAuth, requireAdmin, async (req: any, res) => {
     try {
@@ -2674,7 +2674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { actualCommission, adminNotes, ratesData } = req.body;
 
       // First update the referral with actual commission
-      await storage.updateDeal(dealId, { 
+      await storage.updateDeal(dealId, {
         actualCommission: actualCommission,
         adminNotes: adminNotes || null
       });
@@ -2682,7 +2682,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get deal details for approval
       const allDeals = await storage.getAllDeals();
       const deal = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!referral) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -2706,8 +2706,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         businessName: deal.businessName
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Commission approval created successfully",
         approval: approval
       });
@@ -2748,11 +2748,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate payment reference if not provided
       const paymentRef = paymentReference || `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-      
+
       await storage.processCommissionPayment(approvalId, paymentRef);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Commission payment processed successfully",
         paymentReference: paymentRef
       });
@@ -2763,7 +2763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ PUSH NOTIFICATION ENDPOINTS ============
-  
+
   // Get public VAPID key for client
   app.get('/api/push/vapid-key', async (req: any, res) => {
     try {
@@ -2792,8 +2792,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (saved) {
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           message: "Push notifications enabled successfully",
           subscriptionId: saved.id
         });
@@ -2819,9 +2819,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const removed = await pushNotificationService.removePushSubscription(userId, endpoint);
 
       if (removed) {
-        res.json({ 
-          success: true, 
-          message: "Push notifications disabled successfully" 
+        res.json({
+          success: true,
+          message: "Push notifications disabled successfully"
         });
       } else {
         res.status(404).json({ message: "Subscription not found" });
@@ -2839,14 +2839,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await pushNotificationService.sendTestNotification(userId);
 
       if (result.success) {
-        res.json({ 
-          success: true, 
+        res.json({
+          success: true,
           message: `Test notification sent to ${result.sentCount} device(s)`,
           details: result
         });
       } else {
-        res.json({ 
-          success: false, 
+        res.json({
+          success: false,
           message: "Failed to send test notification",
           errors: result.errors
         });
@@ -2862,7 +2862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const subscriptions = await storage.getUserPushSubscriptions(userId);
-      
+
       res.json({
         isSubscribed: subscriptions.length > 0,
         subscriptionCount: subscriptions.length,
@@ -2885,23 +2885,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const rootUserId = userId || req.user.id;
-      
+
       const allUsers = await storage.getAllUsers();
-      
+
       // Build MLM tree structure
       const buildMlmTree = async (users: any[], rootId: string): Promise<any> => {
         const user = users.find(u => u.id === rootId);
         if (!user) return null;
-        
+
         const children = users.filter(u => u.parentPartnerId === rootId);
         const userReferrals = await storage.getDealsByUserId(rootId);
-        
+
         const childNodes = [];
         for (const child of children) {
           const childNode = await buildMlmTree(users, child.id);
           if (childNode) childNodes.push(childNode);
         }
-        
+
         return {
           id: user.id,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
@@ -2914,22 +2914,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parentPartnerId: user.parentPartnerId
         };
       };
-      
+
       const tree = await buildMlmTree(allUsers, rootUserId);
-      
+
       // Calculate stats
       const levelDistribution: { [key: number]: number } = {};
       allUsers.forEach(user => {
         const level = user.partnerLevel || 1;
         levelDistribution[level] = (levelDistribution[level] || 0) + 1;
       });
-      
+
       const stats = {
         totalLevels: Math.max(...allUsers.map(u => u.partnerLevel || 1)),
         totalUsers: allUsers.length,
         levelDistribution
       };
-      
+
       res.json({ tree, stats });
     } catch (error) {
       console.error("Error fetching MLM hierarchy:", error);
@@ -2941,26 +2941,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/mlm-tree-data', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      
+
       const treeData = await Promise.all(
         allUsers
           .filter((u: any) => u.firstName && u.lastName && u.partnerId) // Only users with complete data
           .map(async (u: any) => {
             // Count direct recruits
             const directRecruits = allUsers.filter((child: any) => child.parentPartnerId === u.id).length;
-            
+
             // Get total downline count (recursive)
             const countDownline = (userId: string): number => {
               const children = allUsers.filter((child: any) => child.parentPartnerId === userId);
               return children.reduce((sum, child) => sum + 1 + countDownline(child.id), 0);
             };
-            
+
             // Get user's referrals for commission data
             const referrals = await storage.getDealsByUserId(u.id);
-            const totalCommissions = referrals.reduce((sum: number, ref: any) => 
+            const totalCommissions = referrals.reduce((sum: number, ref: any) =>
               sum + parseFloat(ref.actualCommission || '0'), 0
             );
-            
+
             return {
               id: u.id,
               name: `${u.firstName} ${u.lastName}`,
@@ -2974,7 +2974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             };
           })
       );
-      
+
       res.json(treeData);
     } catch (error) {
       console.error("Error fetching MLM tree data:", error);
@@ -2986,7 +2986,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/users/list', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const users = await storage.getAllUsers();
-      
+
       const userList = users
         .filter((u: any) => u.firstName && u.lastName && u.partnerId)
         .map((u: any) => ({
@@ -2994,7 +2994,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: `${u.firstName} ${u.lastName}`,
           partnerId: u.partnerId
         }));
-      
+
       res.json(userList);
     } catch (error) {
       console.error("Error fetching user list:", error);
@@ -3006,45 +3006,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/mlm-personal-tree/:userId', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { userId } = req.params;
-      
+
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const allUsers = await storage.getAllUsers();
-      
+
       // Build upline (all parents going up)
-      const upline: Array<{id: string, name: string, partnerId: string, level: number}> = [];
+      const upline: Array<{ id: string, name: string, partnerId: string, level: number }> = [];
       let currentParentId = user.parentPartnerId;
       let level = 1;
-      
+
       while (currentParentId && level <= 10) { // Max 10 levels to prevent infinite loops
         const parent = allUsers.find((u: any) => u.id === currentParentId);
         if (!parent) break;
-        
+
         upline.push({
           id: parent.id,
           name: `${parent.firstName || ''} ${parent.lastName || ''}`.trim() || 'Unknown',
           partnerId: parent.partnerId || '',
           level
         });
-        
+
         currentParentId = parent.parentPartnerId;
         level++;
       }
-      
+
       // Build downline tree (all children going down)
       const buildDownlineTree = async (rootId: string): Promise<any> => {
         const children = allUsers.filter((u: any) => u.parentPartnerId === rootId);
         const userReferrals = await storage.getDealsByUserId(rootId);
-        
+
         const childNodes = [];
         for (const child of children) {
           const childNode = await buildDownlineTree(child.id);
           if (childNode) childNodes.push(childNode);
         }
-        
+
         return {
           id: user.id,
           name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown',
@@ -3056,9 +3056,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalCommissions: userReferrals.reduce((sum: number, ref: any) => sum + parseFloat(ref.actualCommission || '0'), 0)
         };
       };
-      
+
       const downline = await buildDownlineTree(userId);
-      
+
       res.json({
         upline,
         user: {
@@ -3079,14 +3079,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      
+
       const referrals = await storage.getDealsByUserId(userId);
       const referralsByLevel = await storage.getDealsByLevel(userId);
-      
+
       res.json({
         user,
         referrals,
@@ -3124,26 +3124,117 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/users/search', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { query } = req.query;
-      
+
       if (!query || typeof query !== 'string') {
         return res.status(400).json({ message: "Search query is required" });
       }
 
       const users = await storage.getAllUsers();
       const searchTerm = query.toLowerCase();
-      
+
       // Search by name, email, or partner ID
-      const filteredUsers = users.filter((u: any) => 
+      const filteredUsers = users.filter((u: any) =>
         u.firstName?.toLowerCase().includes(searchTerm) ||
         u.lastName?.toLowerCase().includes(searchTerm) ||
         u.email?.toLowerCase().includes(searchTerm) ||
         u.partnerId?.toLowerCase().includes(searchTerm)
       );
-      
+
       res.json(filteredUsers);
     } catch (error) {
       console.error("Error searching users:", error);
       res.status(500).json({ message: "Failed to search users" });
+    }
+  });
+
+  // Admin impersonation endpoints
+  app.post('/api/admin/impersonate/:userId', requireAuth, requireAdmin, auditAdminAction('impersonate_user', 'admin'), async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const adminId = req.user.id;
+
+      // Verify target user exists
+      const targetUser = await storage.getUser(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Prevent impersonating another admin
+      if (targetUser.isAdmin) {
+        return res.status(403).json({ message: "Cannot impersonate another admin" });
+      }
+
+      // Store impersonation in session
+      req.session.impersonatedUserId = userId;
+      req.session.realAdminId = adminId;
+
+      res.json({
+        success: true,
+        message: `Now viewing as ${targetUser.firstName} ${targetUser.lastName}`,
+        impersonatedUser: {
+          id: targetUser.id,
+          email: targetUser.email,
+          firstName: targetUser.firstName,
+          lastName: targetUser.lastName
+        }
+      });
+    } catch (error) {
+      console.error("Error starting impersonation:", error);
+      res.status(500).json({ message: "Failed to start impersonation" });
+    }
+  });
+
+  app.post('/api/admin/end-impersonation', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.session.impersonatedUserId) {
+        return res.status(400).json({ message: "Not currently impersonating" });
+      }
+
+      const realAdminId = req.session.realAdminId;
+
+      // Clear impersonation from session
+      delete req.session.impersonatedUserId;
+      delete req.session.realAdminId;
+
+      res.json({
+        success: true,
+        message: "Impersonation ended",
+        adminId: realAdminId
+      });
+    } catch (error) {
+      console.error("Error ending impersonation:", error);
+      res.status(500).json({ message: "Failed to end impersonation" });
+    }
+  });
+
+  // Get current impersonation status
+  app.get('/api/admin/impersonation-status', requireAuth, async (req: any, res) => {
+    try {
+      if (!req.session.impersonatedUserId) {
+        return res.json({ isImpersonating: false });
+      }
+
+      const impersonatedUser = await storage.getUser(req.session.impersonatedUserId);
+      const realAdmin = await storage.getUser(req.session.realAdminId);
+
+      res.json({
+        isImpersonating: true,
+        impersonatedUser: impersonatedUser ? {
+          id: impersonatedUser.id,
+          email: impersonatedUser.email,
+          firstName: impersonatedUser.firstName,
+          lastName: impersonatedUser.lastName
+        } : null,
+        realAdmin: realAdmin ? {
+          id: realAdmin.id,
+          email: realAdmin.email,
+          firstName: realAdmin.firstName,
+          lastName: realAdmin.lastName
+        } : null
+      });
+    } catch (error) {
+      console.error("Error getting impersonation status:", error);
+      res.status(500).json({ message: "Failed to get impersonation status" });
     }
   });
 
@@ -3152,10 +3243,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/payments/live-accounts', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const quotes = await storage.getAllQuotesForAdmin();
-      
+
       // Filter for live quotes that haven't been paid
-      const liveAccounts = quotes.filter((q: any) => 
-        q.customerJourneyStatus === 'live' && 
+      const liveAccounts = quotes.filter((q: any) =>
+        q.customerJourneyStatus === 'live' &&
         !q.commissionPaid
       );
 
@@ -3164,10 +3255,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         liveAccounts.map(async (quote: any) => {
           const deal = await storage.getDealById(quote.referralId);
           const user = deal ? await storage.getUser(deal.referrerId) : null;
-          
+
           // Get upline structure
           const upline = user ? await storage.getMlmHierarchy(user.id) : { parents: [] };
-          
+
           return {
             ...quote,
             deal,
@@ -3189,7 +3280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const hierarchy = await storage.getMlmHierarchy(userId);
-      
+
       res.json({
         parents: hierarchy.parents,
         level: hierarchy.level
@@ -3204,7 +3295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/payments/calculate', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { quoteId, totalAmount } = req.body;
-      
+
       if (!quoteId || !totalAmount) {
         return res.status(400).json({ message: "Quote ID and total amount are required" });
       }
@@ -3295,7 +3386,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/payments/process', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const { quoteId, totalAmount, paymentReference, breakdown } = req.body;
-      
+
       if (!quoteId || !totalAmount || !breakdown) {
         return res.status(400).json({ message: "Missing required payment data" });
       }
@@ -3326,7 +3417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       for (const payment of breakdown) {
         try {
           const user = await storage.getUser(payment.userId);
-          
+
           if (!user) {
             failedPayments.push({
               ...payment,
@@ -3396,7 +3487,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           commissionPaidDate: new Date(),
           stripePaymentId: paymentResults[0].transferId
         });
-        
+
         // Move to "complete" status (installed and paid)
         await storage.updateQuoteJourneyStatus(quoteId, 'complete');
       }
@@ -3414,9 +3505,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error: any) {
       console.error("Error processing payments:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to process payments",
-        error: error.message 
+        error: error.message
       });
     }
   });
@@ -3452,16 +3543,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quote.referralId
       );
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Invoice raised successfully",
-        invoice 
+        invoice
       });
     } catch (error: any) {
       console.error("Error raising invoice:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to raise invoice",
-        error: error.message 
+        error: error.message
       });
     }
   });
@@ -3495,9 +3586,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Query submitted successfully" });
     } catch (error: any) {
       console.error("Error submitting invoice query:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to submit query",
-        error: error.message 
+        error: error.message
       });
     }
   });
@@ -3545,9 +3636,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Invoice marked as paid" });
     } catch (error: any) {
       console.error("Error marking invoice as paid:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to mark invoice as paid",
-        error: error.message 
+        error: error.message
       });
     }
   });
@@ -3556,7 +3647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/impersonate/:userId', requireAuth, requireAdmin, auditAdminAction('impersonate_user', 'admin'), async (req: any, res) => {
     try {
       const { userId } = req.params;
-      
+
       // Get the user to impersonate
       const targetUser = await storage.getUser(userId);
       if (!targetUser) {
@@ -3567,24 +3658,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.session.originalAdminId) {
         req.session.originalAdminId = req.user.id;
       }
-      
+
       // Switch session to target user
       req.session.userId = targetUser.id;
       req.session.impersonating = true;
-      
+
       await new Promise<void>((resolve, reject) => {
         req.session.save((err: any) => {
           if (err) reject(err);
           else resolve();
         });
       });
-      
+
       console.log(`Admin ${req.user.email} is now impersonating user ${targetUser.email}`);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: `Now viewing as ${targetUser.firstName} ${targetUser.lastName}`,
-        user: targetUser 
+        user: targetUser
       });
     } catch (error) {
       console.error("Error impersonating user:", error);
@@ -3598,29 +3689,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.session.impersonating || !req.session.originalAdminId) {
         return res.status(400).json({ message: "Not currently impersonating" });
       }
-      
+
       const originalAdminId = req.session.originalAdminId;
-      
+
       // Restore original admin session
       req.session.userId = originalAdminId;
       delete req.session.originalAdminId;
       delete req.session.impersonating;
-      
+
       await new Promise<void>((resolve, reject) => {
         req.session.save((err: any) => {
           if (err) reject(err);
           else resolve();
         });
       });
-      
+
       const adminUser = await storage.getUser(originalAdminId);
-      
+
       console.log(`Admin ${adminUser?.email} exited impersonation mode`);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: "Exited impersonation mode",
-        user: adminUser 
+        user: adminUser
       });
     } catch (error) {
       console.error("Error exiting impersonation:", error);
@@ -3631,27 +3722,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced admin referrals list with search and filtering
   app.get('/api/admin/referrals', requireAuth, requireAdmin, async (req: any, res) => {
     try {
-      const { 
-        search, 
-        status, 
+      const {
+        search,
+        status,
         stage,
         productType,
-        page = 1, 
+        page = 1,
         limit = 50,
         sortBy = 'submittedAt',
-        sortOrder = 'desc' 
+        sortOrder = 'desc'
       } = req.query;
 
       let referrals = await storage.getAllDeals();
-      
+
       if (productType && productType !== 'all') {
         referrals = referrals.filter((r: any) => r.productType === productType);
       }
-      
+
       // Fetch and attach billUploads and quote data for each referral
       referrals = await Promise.all(referrals.map(async (referral: any) => {
         const billUploads = await storage.getBillUploadsByBusinessName(referral.businessName);
-        
+
         // Get the most recent quote for this referral
         let quoteData = null;
         try {
@@ -3664,7 +3755,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {
           // Quote lookup failed, continue without quote data
         }
-        
+
         return {
           ...referral,
           billUploads,
@@ -3680,11 +3771,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         };
       }));
-      
+
       // Apply search filter
       if (search) {
         const searchTerm = search.toString().toLowerCase();
-        referrals = referrals.filter((r: any) => 
+        referrals = referrals.filter((r: any) =>
           r.businessName?.toLowerCase().includes(searchTerm) ||
           r.businessEmail?.toLowerCase().includes(searchTerm) ||
           r.notes?.toLowerCase().includes(searchTerm) ||
@@ -3707,7 +3798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       referrals.sort((a: any, b: any) => {
         const aVal = a[sortBy.toString()];
         const bVal = b[sortBy.toString()];
-        
+
         if (sortOrder === 'asc') {
           return aVal > bVal ? 1 : -1;
         } else {
@@ -3741,7 +3832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const updateData = req.body;
-      
+
       const user = await storage.updateUser(userId, updateData);
       res.json(user);
     } catch (error) {
@@ -3755,11 +3846,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dealId } = req.params;
       const updateData = req.body;
-      
+
       // Get current referral for audit trail
       const allDeals = await storage.getAllDeals();
       const currentReferral = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!currentReferral) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -3803,7 +3894,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             oldStatus,
             newStatus,
             updatedBy: `Admin: ${req.user.email}`,
-            commission: (newStatus === 'approved' || newStatus === 'paid') ? 
+            commission: (newStatus === 'approved' || newStatus === 'paid') ?
               (updateData.actualCommission || updateData.estimatedCommission || currentReferral.estimatedCommission) : null
           }
         });
@@ -3823,7 +3914,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               teamMemberName: referralOwner.firstName ? `${referralOwner.firstName} ${referralOwner.lastName || ''}`.trim() : referralOwner.email,
               teamMemberId: currentReferral.referrerId,
               updatedBy: `Admin: ${req.user.email}`,
-              commission: (newStatus === 'approved' || newStatus === 'paid') ? 
+              commission: (newStatus === 'approved' || newStatus === 'paid') ?
                 (updateData.actualCommission || updateData.estimatedCommission || currentReferral.estimatedCommission) : null
             }
           });
@@ -3846,9 +3937,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/admin/seed-test-data', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       await storage.seedTestDeals();
-      res.json({ 
-        success: true, 
-        message: "Test referrals seeded successfully" 
+      res.json({
+        success: true,
+        message: "Test referrals seeded successfully"
       });
     } catch (error) {
       console.error("Error seeding test data:", error);
@@ -3865,7 +3956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get current referral for audit trail
       const allDeals = await storage.getAllDeals();
       const currentReferral = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!currentReferral) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -3986,8 +4077,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Stage override applied successfully",
         referral: updatedReferral,
         previousStage: currentReferral.dealStage,
@@ -4009,17 +4100,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get deal details
       const allDeals = await storage.getAllDeals();
       const deal = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!referral) {
         return res.status(404).json({ message: "Deal not found" });
       }
 
       const totalCommission = parseFloat(actualCommission);
       const submitterId = deal.referrerId;
-      
+
       // Calculate commission distribution
       const distribution: any[] = [];
-      
+
       // Commission tiers
       const tiers = [
         { percentage: 60, label: 'Direct Commission' },
@@ -4029,16 +4120,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Walk up the chain
       let currentUserId = submitterId;
-      
+
       for (let i = 0; i < tiers.length; i++) {
         if (!currentUserId) break;
-        
+
         const tier = tiers[i];
         const amount = (totalCommission * tier.percentage) / 100;
-        
+
         // Get user details
         const user = await storage.getUser(currentUserId);
-        
+
         if (user) {
           distribution.push({
             userId: currentUserId,
@@ -4051,14 +4142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             level: i
           });
         }
-        
+
         // Move to next person in chain
         if (i < tiers.length - 1) {
           currentUserId = user?.parentPartnerId || null;
         }
       }
 
-      res.json({ 
+      res.json({
         success: true,
         totalCommission,
         businessName: deal.businessName,
@@ -4079,14 +4170,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get deal details
       const allDeals = await storage.getAllDeals();
       const deal = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!referral) {
         return res.status(404).json({ message: "Deal not found" });
       }
 
       // Update deal with payment confirmation
       const paymentConfirmationNote = `\n[${new Date().toLocaleString()}] Payment confirmed by admin ${req.user.email}: £${actualCommission} via ${paymentMethod || 'Bank Transfer'}. Reference: ${paymentReference}. Notes: ${paymentNotes || 'No additional notes'}`;
-      
+
       const updateData = {
         actualCommission: actualCommission.toString(),
         status: 'paid',
@@ -4111,7 +4202,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const commissionPercentage = parseFloat(ratesData.commissionRate || '0%');
         const commissionAmount = parseFloat(approval.commissionAmount);
         const commissionType = ratesData.commissionType || 'direct';
-        
+
         await createNotificationForUser(approval.userId, {
           type: 'commission_paid',
           title: commissionType === 'direct' ? 'Commission Payment Confirmed' : 'Override Commission Paid',
@@ -4140,8 +4231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: `Payment confirmed and distributed to ${approvals.length} people in the commission chain`,
         referral: updatedReferral,
         approvals: approvals,
@@ -4187,7 +4278,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const auditNote = `\n[${new Date().toLocaleString()}] Referral reassigned from ${referral.referrerId} to ${newReferrerId} by admin ${req.user.email}. Reason: ${reason}`;
-      
+
       await storage.updateDeal(dealId, {
         referrerId: newReferrerId,
         adminNotes: (deal.adminNotes || '') + auditNote,
@@ -4212,11 +4303,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { dealId } = req.params;
       const quoteData = req.body;
-      
+
       // Verify deal exists
       const allDeals = await storage.getAllDeals();
       const deal = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!deal) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -4229,15 +4320,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         adminNotes: quoteData.adminNotes || '',
         updatedAt: new Date()
       });
-      
+
       // Log admin action
       console.log('Quote sent by admin for referral:', dealId, {
         admin: req.user.email,
         quoteAmount: quoteData.totalAmount,
         rates: quoteData.rates
       });
-      
-      res.json({ 
+
+      res.json({
         success: true,
         message: "Quote sent to customer successfully",
         quoteData: {
@@ -4276,7 +4367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify deal exists
       const allDeals = await storage.getAllDeals();
       const deal = allDeals.find((r: any) => r.id === dealId);
-      
+
       if (!deal) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -4374,7 +4465,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settlementFee = settlementType === "7_day" ? 10 : 0;
       const dojoPlanFee = dojoPlan ? 11.99 : 0;
 
-      const monthlyTotal = devicePaymentType === "pay_monthly" 
+      const monthlyTotal = devicePaymentType === "pay_monthly"
         ? deviceCost + hardwareCareCost + settlementFee + dojoPlanFee
         : hardwareCareCost + settlementFee + dojoPlanFee;
 
@@ -4476,7 +4567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settlementFee = settlementType === "7_day" ? 10 : 0;
       const dojoPlanFee = dojoPlan ? 11.99 : 0;
 
-      const monthlyTotal = devicePaymentType === "pay_monthly" 
+      const monthlyTotal = devicePaymentType === "pay_monthly"
         ? deviceCost + hardwareCareCost + settlementFee + dojoPlanFee
         : hardwareCareCost + settlementFee + dojoPlanFee;
 
@@ -4557,8 +4648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Verify it's in quote_approved stage
       if (deal.dealStage !== 'quote_approved') {
-        return res.status(400).json({ 
-          message: "Can only move deals from 'Quote Approved' stage to 'Agreement Sent'" 
+        return res.status(400).json({
+          message: "Can only move deals from 'Quote Approved' stage to 'Agreement Sent'"
         });
       }
 
@@ -4604,10 +4695,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date()
       });
 
-      res.json({ 
+      res.json({
         success: true,
         message: "Documents confirmation updated successfully",
-        referral 
+        referral
       });
     } catch (error) {
       console.error("Error updating docs confirmation:", error);
@@ -4623,13 +4714,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update deal with document requirements
       const updatedNotes = `Required documents: ${requiredDocuments.join(', ')}. ${notes || ''}`;
-      
+
       await storage.updateDeal(dealId, {
         adminNotes: updatedNotes,
         updatedAt: new Date()
       });
 
-      res.json({ 
+      res.json({
         success: true,
         message: "Document requirements updated successfully",
         requiredDocuments
@@ -4649,7 +4740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Valid stages for admin override
       const validStages = [
         'quote_request_received',
-        'quote_sent', 
+        'quote_sent',
         'quote_approved',
         'agreement_sent',
         'signed_awaiting_docs',
@@ -4661,14 +4752,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       if (dealStage && !validStages.includes(dealStage)) {
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: "Invalid stage",
-          validStages 
+          validStages
         });
       }
 
       const adminNoteEntry = `Stage changed to ${dealStage} by admin on ${new Date().toLocaleDateString()}. ${notes || ''}${productType ? ` Product type: ${productType}.` : ''}${quoteDeliveryMethod ? ` Quote delivery: ${quoteDeliveryMethod}.` : ''}`;
-      
+
       const updateData: any = {
         adminNotes: adminNoteEntry,
         updatedAt: new Date()
@@ -4688,7 +4779,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.updateDeal(dealId, updateData);
 
-      res.json({ 
+      res.json({
         success: true,
         message: `Deal updated successfully`,
         dealStage,
@@ -4710,7 +4801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validStages = [
         'quote_request_received',
-        'quote_sent', 
+        'quote_sent',
         'quote_approved',
         'agreement_sent',
         'signed_awaiting_docs',
@@ -4743,7 +4834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const user = await storage.getUser(userId);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -4751,7 +4842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In a real implementation, you would send an email with a reset link
       // For now, we'll just log it and return success
       console.log(`Password reset requested for user: ${user.email}`);
-      
+
       res.json({ message: "Password reset email sent successfully" });
     } catch (error) {
       console.error("Error sending password reset:", error);
@@ -4764,31 +4855,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const deals = await storage.getAllDeals();
       let syncedCount = 0;
-      
+
       for (const deal of deals) {
         if (deal.dealStage && deal.id) {
           // Find any quotes associated with this deal
           const allQuotes = await storage.getAllQuotesForAdmin();
           const dealQuotes = allQuotes.filter((q: any) => q.referralId === deal.id);
-          
+
           // Sync customerJourneyStatus for each quote
           for (const quote of dealQuotes) {
             const customerJourneyStatus = mapDealStageToCustomerJourney(deal.dealStage);
             await storage.db.update(storage.schema.quotes)
-              .set({ 
+              .set({
                 customerJourneyStatus,
-                updatedAt: new Date() 
+                updatedAt: new Date()
               })
               .where(storage.eq(storage.schema.quotes.id, quote.id));
             syncedCount++;
           }
         }
       }
-      
-      res.json({ 
+
+      res.json({
         success: true,
         message: `Successfully synced ${syncedCount} quotes to match deal stages`,
-        syncedCount 
+        syncedCount
       });
     } catch (error) {
       console.error("Error migrating deal stages:", error);
@@ -4800,10 +4891,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await storage.seedBusinessTypes();
   await storage.seedRates();
   // Partners seeding will be added after database schema is migrated
-  
+
   // Notification routes
   // ============ USER COMMISSION APPROVAL ENDPOINTS ============
-  
+
   // Get user's pending commission approvals
   app.get('/api/commission-approvals', requireAuth, async (req: any, res) => {
     try {
@@ -4821,11 +4912,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { approvalId } = req.params;
       const userId = req.user.id;
-      
+
       // Verify approval belongs to user
       const approvals = await storage.getCommissionApprovalsByUserId(userId);
       const approval = approvals.find(a => a.id === approvalId);
-      
+
       if (!approval) {
         return res.status(404).json({ message: "Commission approval not found" });
       }
@@ -4837,8 +4928,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update approval status
       const updatedApproval = await storage.updateCommissionApprovalStatus(approvalId, 'approved');
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Commission approved successfully",
         approval: updatedApproval
       });
@@ -4853,11 +4944,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { approvalId } = req.params;
       const userId = req.user.id;
-      
+
       // Verify approval belongs to user
       const approvals = await storage.getCommissionApprovalsByUserId(userId);
       const approval = approvals.find(a => a.id === approvalId);
-      
+
       if (!approval) {
         return res.status(404).json({ message: "Commission approval not found" });
       }
@@ -4869,8 +4960,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update approval status
       const updatedApproval = await storage.updateCommissionApprovalStatus(approvalId, 'rejected');
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Commission rejected",
         approval: updatedApproval
       });
@@ -4881,7 +4972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ COMMISSION PAYMENTS & WITHDRAWALS ============
-  
+
   // Set up bank details for withdrawals
   app.patch('/api/user/bank-details', requireAuth, async (req: any, res) => {
     try {
@@ -4899,8 +4990,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bankingComplete: true
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Bank details saved successfully",
         user: updatedUser
       });
@@ -4926,13 +5017,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/commission-payments/team', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      
+
       // Get user's downline (direct referrals and their referrals)
       const teamMembers = await storage.getDownlineUsers(userId);
-      
+
       // Get commission payments for team members where current user is recipient
       const teamPayments = await storage.getTeamCommissionPayments(userId);
-      
+
       res.json(teamPayments);
     } catch (error) {
       console.error("Error fetching team commission payments:", error);
@@ -4944,13 +5035,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/commission-payments/withdrawn', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      
+
       // Get commission payments that have been paid/withdrawn
       const withdrawnPayments = await storage.db.select()
         .from(storage.schema.commissionPayments)
         .where(sql`recipient_id = ${userId} AND payment_status = 'paid'`)
         .orderBy(sql`payment_date DESC`);
-      
+
       res.json(withdrawnPayments);
     } catch (error) {
       console.error("Error fetching withdrawn commission payments:", error);
@@ -4979,11 +5070,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bankSortCode: users.bankSortCode,
         bankAccountName: users.bankAccountName,
       })
-      .from(commissionPayments)
-      .leftJoin(users, eq(commissionPayments.recipientId, users.id))
-      .where(eq(commissionPayments.paymentStatus, 'approved'))
-      .orderBy(desc(commissionPayments.createdAt));
-      
+        .from(commissionPayments)
+        .leftJoin(users, eq(commissionPayments.recipientId, users.id))
+        .where(eq(commissionPayments.paymentStatus, 'approved'))
+        .orderBy(desc(commissionPayments.createdAt));
+
       res.json(approvedPayments);
     } catch (error) {
       console.error("Error fetching approved commission payments:", error);
@@ -4996,11 +5087,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { paymentId } = req.params;
       const userId = req.user.id;
-      
+
       // Verify payment belongs to user
       const payments = await storage.getCommissionPaymentsByRecipient(userId);
       const payment = payments.find(p => p.id === paymentId);
-      
+
       if (!payment) {
         return res.status(404).json({ message: "Commission payment not found" });
       }
@@ -5012,8 +5103,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update payment approval status
       const updatedPayment = await storage.updateCommissionPaymentApproval(paymentId, 'approved', null);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Commission payment approved successfully",
         payment: updatedPayment
       });
@@ -5029,7 +5120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { paymentId } = req.params;
       const { queryNotes } = req.body;
       const userId = req.user.id;
-      
+
       if (!queryNotes) {
         return res.status(400).json({ message: "Query notes are required" });
       }
@@ -5037,7 +5128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify payment belongs to user
       const payments = await storage.getCommissionPaymentsByRecipient(userId);
       const payment = payments.find(p => p.id === paymentId);
-      
+
       if (!payment) {
         return res.status(404).json({ message: "Commission payment not found" });
       }
@@ -5049,8 +5140,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update payment with query
       const updatedPayment = await storage.updateCommissionPaymentApproval(paymentId, 'queried', queryNotes);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Query submitted successfully",
         payment: updatedPayment
       });
@@ -5065,10 +5156,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const payments = await storage.getCommissionPaymentsByRecipient(userId);
-      
+
       // Filter only paid commissions
       const withdrawnPayments = payments.filter((p: any) => p.paymentStatus === 'paid');
-      
+
       res.json(withdrawnPayments);
     } catch (error) {
       console.error("Error fetching withdrawn payments:", error);
@@ -5077,7 +5168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ ADMIN: CREATE MULTI-LEVEL COMMISSIONS ============
-  
+
   // Admin endpoint to create multi-level commissions when marking deal as live
   app.post('/api/admin/referrals/:dealId/create-commission', requireAuth, requireAdmin, async (req: any, res) => {
     try {
@@ -5159,8 +5250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Multi-level commissions created successfully",
         commissions,
         totalCommission: total,
@@ -5181,16 +5272,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { paymentId } = req.params;
       const { transferReference } = req.body;
-      
+
       // Get the commission payment
       const payment = await storage.db.select().from(storage.schema.commissionPayments).where(sql`id = ${paymentId}`).limit(1);
-      
+
       if (!payment || payment.length === 0) {
         return res.status(404).json({ message: "Commission payment not found" });
       }
-      
+
       const commissionPayment = payment[0];
-      
+
       // Update commission payment to paid status
       await storage.db.update(storage.schema.commissionPayments)
         .set({
@@ -5200,7 +5291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: new Date()
         })
         .where(sql`id = ${paymentId}`);
-      
+
       // Update deal stage to "live_paid" if this is the level 1 commission
       if (commissionPayment.level === 1 && commissionPayment.dealId) {
         await storage.db.update(storage.schema.deals)
@@ -5210,9 +5301,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           })
           .where(sql`id = ${commissionPayment.dealId}`);
       }
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: "Commission marked as paid and withdrawn successfully"
       });
     } catch (error) {
@@ -5231,7 +5322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
   });
-  
+
   app.patch('/api/notifications/:notificationId/read', requireAuth, async (req: any, res) => {
     try {
       const { notificationId } = req.params;
@@ -5242,7 +5333,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to mark notification as read" });
     }
   });
-  
+
   app.patch('/api/notifications/read-all', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
@@ -5273,7 +5364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         partnerId: userId,
       };
-      
+
       const lead = await storage.createLead(leadData);
       res.json(lead);
     } catch (error) {
@@ -5286,12 +5377,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { leads: leadsData } = req.body;
-      
+
       const leadsWithPartnerId = leadsData.map((lead: any) => ({
         ...lead,
         partnerId: userId,
       }));
-      
+
       const result = await storage.createLeadsBulk(leadsWithPartnerId);
       res.json(result);
     } catch (error) {
@@ -5304,7 +5395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { leadId } = req.params;
       const { status } = req.body;
-      
+
       const lead = await storage.updateLeadStatus(leadId, status);
       res.json(lead);
     } catch (error) {
@@ -5317,7 +5408,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { leadId } = req.params;
       const updates = req.body;
-      
+
       const lead = await storage.updateLead(leadId, updates);
       res.json(lead);
     } catch (error) {
@@ -5345,7 +5436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         partnerId: userId,
       };
-      
+
       const interaction = await storage.addLeadInteraction(leadId, interactionData);
       res.json(interaction);
     } catch (error) {
@@ -5359,7 +5450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { leadId } = req.params;
       const { productType, title, content } = req.body;
-      
+
       // Create an interaction record for the info sharing
       const interactionData = {
         partnerId: userId,
@@ -5369,7 +5460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         outcome: 'follow_up_required',
         nextAction: 'Follow up on information shared',
       };
-      
+
       const interaction = await storage.addLeadInteraction(leadId, interactionData);
       res.json({ success: true, interaction });
     } catch (error) {
@@ -5393,11 +5484,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { slug } = req.params;
       const partner = await storage.getPartnerBySlug(slug);
-      
+
       if (!partner) {
         return res.status(404).json({ message: "Partner not found" });
       }
-      
+
       res.json(partner);
     } catch (error) {
       console.error("Error fetching partner:", error);
@@ -5455,7 +5546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { firstName, lastName, phone, address, city, postcode, country } = req.body;
-      
+
       // Update user profile
       await storage.updateUserProfile(userId, {
         firstName,
@@ -5490,7 +5581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const bankingData = req.body;
-      
+
       // Update banking details
       await storage.updateBankingDetails(userId, bankingData);
 
@@ -5517,7 +5608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { type, subject, message, priority, rating } = req.body;
-      
+
       // Store feedback
       const feedbackId = await storage.createFeedback({
         userId,
@@ -5552,7 +5643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
       const { event, data } = req.body;
-      
+
       // Log analytics event for audit trail
       await storage.createAudit({
         actorUserId: userId,
@@ -5593,7 +5684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ CONTACTS ENDPOINTS ============
-  
+
   // Get user's contacts
   app.get('/api/contacts', requireAuth, async (req: any, res) => {
     try {
@@ -5610,22 +5701,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/contacts', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      
+
       // Validate request body with Zod schema
       const validationResult = insertContactSchema.omit({ partnerId: true }).safeParse(req.body);
       if (!validationResult.success) {
         const errorMessage = fromZodError(validationResult.error);
-        return res.status(400).json({ 
-          message: "Invalid contact data", 
-          details: errorMessage.message 
+        return res.status(400).json({
+          message: "Invalid contact data",
+          details: errorMessage.message
         });
       }
-      
+
       const contactData = {
         ...validationResult.data,
         partnerId: userId,
       };
-      
+
       const contact = await storage.createContact(contactData);
       res.json(contact);
     } catch (error) {
@@ -5640,11 +5731,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { contactId } = req.params;
       const userId = req.user.id;
       const contact = await storage.getContactById(contactId, userId);
-      
+
       if (!contact) {
         return res.status(404).json({ message: "Contact not found" });
       }
-      
+
       res.json(contact);
     } catch (error) {
       console.error("Error fetching contact:", error);
@@ -5660,17 +5751,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { contactId } = req.params;
       const userId = req.user.id;
-      
+
       // Validate request body with Zod schema (partial for updates)
       const validationResult = insertContactSchema.omit({ partnerId: true }).partial().safeParse(req.body);
       if (!validationResult.success) {
         const errorMessage = fromZodError(validationResult.error);
-        return res.status(400).json({ 
-          message: "Invalid contact data", 
-          details: errorMessage.message 
+        return res.status(400).json({
+          message: "Invalid contact data",
+          details: errorMessage.message
         });
       }
-      
+
       const contact = await storage.updateContact(contactId, userId, validationResult.data);
       res.json(contact);
     } catch (error) {
@@ -5731,7 +5822,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============ OPPORTUNITIES ENDPOINTS ============
-  
+
   // Get user's opportunities
   app.get('/api/opportunities', requireAuth, async (req: any, res) => {
     try {
@@ -5748,8 +5839,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/opportunities', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      
-      
+
+
       // Convert date strings to Date objects for timestamp fields
       const requestData = { ...req.body };
       if (requestData.expectedCloseDate && typeof requestData.expectedCloseDate === 'string') {
@@ -5761,7 +5852,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (requestData.nextFollowUp && typeof requestData.nextFollowUp === 'string') {
         requestData.nextFollowUp = new Date(requestData.nextFollowUp);
       }
-      
+
       // Validate request body with Zod schema
       const validationResult = insertOpportunitySchema.omit({ partnerId: true }).safeParse(requestData);
       if (!validationResult.success) {
@@ -5771,18 +5862,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requestBody: requestData,
           formattedError: errorMessage.message
         });
-        return res.status(400).json({ 
-          message: "Invalid opportunity data", 
+        return res.status(400).json({
+          message: "Invalid opportunity data",
           details: errorMessage.message,
           validationErrors: validationResult.error.errors
         });
       }
-      
+
       const opportunityData = {
         ...validationResult.data,
         partnerId: userId,
       };
-      
+
       const opportunity = await storage.createOpportunity(opportunityData);
       res.json(opportunity);
     } catch (error) {
@@ -5797,11 +5888,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { opportunityId } = req.params;
       const userId = req.user.id;
       const opportunity = await storage.getOpportunityById(opportunityId, userId);
-      
+
       if (!opportunity) {
         return res.status(404).json({ message: "Opportunity not found" });
       }
-      
+
       res.json(opportunity);
     } catch (error) {
       console.error("Error fetching opportunity:", error);
@@ -5817,7 +5908,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { opportunityId } = req.params;
       const userId = req.user.id;
-      
+
       // Convert date strings to Date objects for timestamp fields
       const requestData = { ...req.body };
       if (requestData.expectedCloseDate && typeof requestData.expectedCloseDate === 'string') {
@@ -5829,7 +5920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (requestData.nextFollowUp && typeof requestData.nextFollowUp === 'string') {
         requestData.nextFollowUp = new Date(requestData.nextFollowUp);
       }
-      
+
       // Validate request body with Zod schema (partial for updates)
       const validationResult = insertOpportunitySchema.omit({ partnerId: true }).partial().safeParse(requestData);
       if (!validationResult.success) {
@@ -5839,19 +5930,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           requestBody: requestData,
           formattedError: errorMessage.message
         });
-        return res.status(400).json({ 
-          message: "Invalid opportunity data", 
+        return res.status(400).json({
+          message: "Invalid opportunity data",
           details: errorMessage.message,
           validationErrors: validationResult.error.errors
         });
       }
-      
+
       const opportunity = await storage.updateOpportunity(opportunityId, userId, validationResult.data);
-      
+
       // Synchronize related contact data if the opportunity is linked to a contact
       if (opportunity.contactId && validationResult.data) {
         const contactUpdates: any = {};
-        
+
         // Map opportunity fields to contact fields that should be synchronized
         if (validationResult.data.contactEmail) {
           contactUpdates.email = validationResult.data.contactEmail;
@@ -5871,7 +5962,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (validationResult.data.businessType) {
           contactUpdates.businessType = validationResult.data.businessType;
         }
-        
+
         // Update the contact if there are any changes
         if (Object.keys(contactUpdates).length > 0) {
           try {
@@ -5883,7 +5974,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       res.json(opportunity);
     } catch (error) {
       console.error("Error updating opportunity:", error);
@@ -5948,13 +6039,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.id;
       const { contactId } = req.params;
       const { opportunityData } = req.body;
-      
+
       // Get the contact first (with user ownership check)
       const contact = await storage.getContactById(contactId, userId);
       if (!contact) {
         return res.status(404).json({ message: "Contact not found" });
       }
-      
+
       // Create opportunity with contact data
       const opportunity = await storage.createOpportunity({
         ...opportunityData,
@@ -5969,7 +6060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: opportunityData.status || 'prospect',
         stage: opportunityData.stage || 'initial_contact',
       });
-      
+
       res.json(opportunity);
     } catch (error) {
       console.error("Error converting contact to opportunity:", error);
@@ -5978,7 +6069,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ================== NEW ADMIN ANALYTICS & EXPORT ROUTES ==================
-  
+
   // Initialize Stripe
   const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY, {
     apiVersion: '2024-11-20.acacia'
@@ -6046,10 +6137,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'update_referral_stage',
         entityType: 'referral',
         entityId: dealId,
-        details: { 
+        details: {
           oldStage: updatedReferral.status,
           newStage: stage,
-          notes: notes || null 
+          notes: notes || null
         },
         ipAddress: req.ip,
         userAgent: req.get('User-Agent') || null
@@ -6066,7 +6157,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/export/users', requireAuth, requireAdmin, auditAdminAction('export_users', 'admin'), async (req: any, res) => {
     try {
       const csvData = await storage.exportUsersCSV();
-      
+
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename="users_export.csv"');
       res.send(csvData);
@@ -6080,7 +6171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/export/referrals', requireAuth, requireAdmin, auditAdminAction('export_referrals', 'admin'), async (req: any, res) => {
     try {
       const csvData = await storage.exportReferralsCSV();
-      
+
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename="referrals_export.csv"');
       res.send(csvData);
@@ -6094,7 +6185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/admin/export/payments', requireAuth, requireAdmin, auditAdminAction('export_payments', 'admin'), async (req: any, res) => {
     try {
       const csvData = await storage.exportPaymentsCSV();
-      
+
       res.setHeader('Content-Type', 'text/csv');
       res.setHeader('Content-Disposition', 'attachment; filename="payments_export.csv"');
       res.send(csvData);
@@ -6105,43 +6196,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ================== PRODUCTION ADMIN INITIALIZATION ==================
-  
+
   // Special endpoint to grant admin access in production
   // Use this once to set up your admin account
   app.post('/api/admin/initialize-production-admin', async (req: any, res) => {
     try {
       const { secretKey, email } = req.body;
-      
+
       // Check secret key (you should set this as an environment variable)
       const ADMIN_INIT_SECRET = process.env.ADMIN_INIT_SECRET || 'your-secret-key-2024';
-      
+
       if (!secretKey || secretKey !== ADMIN_INIT_SECRET) {
         return res.status(403).json({ message: "Invalid secret key" });
       }
-      
+
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
-      
+
       // Update the user to be an admin
       const user = await storage.getUserByEmail(email);
-      
+
       if (!user) {
         return res.status(404).json({ message: "User not found. Please log in first to create your account." });
       }
-      
+
       // Grant admin access
       await storage.updateUser(user.id, { isAdmin: true });
-      
+
       // Log this important action
       console.log(`[ADMIN INIT] Granted admin access to ${email} (user ID: ${user.id})`);
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: `Admin access granted to ${email}`,
-        userId: user.id 
+        userId: user.id
       });
-      
+
     } catch (error) {
       console.error("Error initializing production admin:", error);
       res.status(500).json({ message: "Failed to initialize admin access" });
@@ -6178,14 +6269,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId, recipientId, amount, recipientEmail, recipientName } = req.body;
 
       if (!dealId || !recipientId || !amount) {
-        return res.status(400).json({ 
-          message: "Missing required fields: dealId, recipientId, and amount are required" 
+        return res.status(400).json({
+          message: "Missing required fields: dealId, recipientId, and amount are required"
         });
       }
 
       if (!stripe) {
-        return res.status(500).json({ 
-          message: "Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable." 
+        return res.status(500).json({
+          message: "Stripe is not configured. Please set STRIPE_SECRET_KEY environment variable."
         });
       }
 
@@ -6194,11 +6285,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create or retrieve Stripe Connect account for recipient
       let stripeAccountId: string;
-      
+
       try {
         // Check if user already has a Stripe Connect account
         const user = await storage.getUser(recipientId);
-        
+
         if (user?.stripeAccountId) {
           stripeAccountId = user.stripeAccountId;
         } else {
@@ -6216,9 +6307,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               partnerId: user?.partnerId || ''
             }
           });
-          
+
           stripeAccountId = account.id;
-          
+
           // Save the Stripe account ID to the user record
           await storage.updateUser(recipientId, { stripeAccountId });
         }
@@ -6267,21 +6358,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (stripeError: any) {
         console.error("Stripe error:", stripeError);
-        
+
         // Handle specific Stripe errors
         if (stripeError.type === 'StripeInvalidRequestError') {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: "Invalid payment request",
-            error: stripeError.message 
+            error: stripeError.message
           });
         }
-        
+
         throw stripeError;
       }
 
     } catch (error) {
       console.error("Error processing Stripe payment:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to process payment",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -6294,16 +6385,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId, recipientId, amount, paymentMethod, paymentReference, notes } = req.body;
 
       if (!dealId || !recipientId || !amount) {
-        return res.status(400).json({ 
-          message: "Missing required fields: dealId, recipientId, and amount are required" 
+        return res.status(400).json({
+          message: "Missing required fields: dealId, recipientId, and amount are required"
         });
       }
 
       // Record the manual payment
       await storage.processStripePayment(
-        dealId, 
-        recipientId, 
-        parseFloat(amount), 
+        dealId,
+        recipientId,
+        parseFloat(amount),
         paymentReference || `MANUAL_${Date.now()}`
       );
 
@@ -6333,7 +6424,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error processing manual payment:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to process manual payment",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -6350,8 +6441,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId, grossAmount, currency = 'GBP', evidenceUrl, notes } = req.body;
 
       if (!dealId || !grossAmount) {
-        return res.status(400).json({ 
-          message: "Missing required fields: dealId and grossAmount are required" 
+        return res.status(400).json({
+          message: "Missing required fields: dealId and grossAmount are required"
         });
       }
 
@@ -6362,19 +6453,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (!['live', 'live_confirm_ltr'].includes(deal.dealStage || '')) {
-        return res.status(400).json({ 
-          message: "Deal must be at LIVE or Live Confirm LTR stage to create commission" 
+        return res.status(400).json({
+          message: "Deal must be at LIVE or Live Confirm LTR stage to create commission"
         });
       }
 
       // Check if payment already exists for this deal
       const existingPayments = await storage.getCommissionPaymentsByDeal(dealId);
-      const hasActivePayment = existingPayments.some(p => 
+      const hasActivePayment = existingPayments.some(p =>
         ['needs_approval', 'approved', 'paid'].includes(p.paymentStatus || '')
       );
       if (hasActivePayment) {
-        return res.status(400).json({ 
-          message: "A commission payment already exists for this deal" 
+        return res.status(400).json({
+          message: "A commission payment already exists for this deal"
         });
       }
 
@@ -6385,10 +6476,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const grossAmountNum = parseFloat(grossAmount);
-      
+
       // Calculate splits based on MLM structure (60%/20%/10%)
       const splits: { userId: string; level: number; percentage: number; amount: number }[] = [];
-      
+
       // Level 0: Direct referrer gets 60%
       splits.push({
         userId: deal.referrerId,
@@ -6483,7 +6574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     } catch (error) {
       console.error("Error creating commission:", error);
-      res.status(500).json({ 
+      res.status(500).json({
         message: "Failed to create commission",
         error: error instanceof Error ? error.message : "Unknown error"
       });
@@ -6504,7 +6595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const deal = await storage.getDealById(payment.dealId);
         const recipient = await storage.getUser(payment.recipientId);
         const createdByUser = payment.createdBy ? await storage.getUser(payment.createdBy) : null;
-        
+
         // Get splits for this payment
         const splits = await db
           .select()
@@ -6551,8 +6642,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (payment.paymentStatus !== 'needs_approval') {
-        return res.status(400).json({ 
-          message: `Payment cannot be approved from status: ${payment.paymentStatus}` 
+        return res.status(400).json({
+          message: `Payment cannot be approved from status: ${payment.paymentStatus}`
         });
       }
 
@@ -6609,14 +6700,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (payment.paymentStatus !== 'approved') {
-        return res.status(400).json({ 
-          message: `Payment must be approved before marking as paid. Current status: ${payment.paymentStatus}` 
+        return res.status(400).json({
+          message: `Payment must be approved before marking as paid. Current status: ${payment.paymentStatus}`
         });
       }
 
       if (!payment.approvedBy) {
-        return res.status(400).json({ 
-          message: "Payment must have an approver before marking as paid" 
+        return res.status(400).json({
+          message: "Payment must have an approver before marking as paid"
         });
       }
 
@@ -6648,8 +6739,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'mark_payment_paid',
         entityType: 'payment',
         entityId: paymentId,
-        details: { 
-          dealId: payment.dealId, 
+        details: {
+          dealId: payment.dealId,
           grossAmount: payment.grossAmount,
           transferReference: transferReference || `PAY_${Date.now()}`
         },
@@ -6747,21 +6838,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         conditions.push(lte(commissionPayments.createdAt, new Date(endDate as string)));
       }
 
-      const payments = conditions.length > 0 
+      const payments = conditions.length > 0
         ? await db.select().from(commissionPayments).where(and(...conditions)).orderBy(desc(commissionPayments.createdAt))
         : await db.select().from(commissionPayments).orderBy(desc(commissionPayments.createdAt));
 
       // Enrich with deal and user info, filter by productType if specified
       const enrichedPayments = await Promise.all(payments.map(async (payment) => {
         const deal = await storage.getDealById(payment.dealId);
-        
+
         // Filter by productType if specified
         if (productType && deal?.productType !== productType) {
           return null;
         }
 
         const recipient = await storage.getUser(payment.recipientId);
-        
+
         return {
           ...payment,
           deal,
@@ -6784,13 +6875,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId } = req.params;
 
       const payments = await storage.getCommissionPaymentsByDeal(dealId);
-      
+
       if (payments.length === 0) {
         return res.json({ hasPayment: false });
       }
 
       const latestPayment = payments[0];
-      
+
       // Get splits for the payment
       const splits = await db
         .select()
@@ -6840,14 +6931,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider } = req.params;
       const validProviders = ['quickbooks', 'xero', 'sage', 'freshbooks'];
-      
+
       if (!validProviders.includes(provider)) {
         return res.status(400).json({ message: 'Invalid provider' });
       }
 
       // Check if OAuth credentials are configured
       const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`];
-      const redirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`] || 
+      const redirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`] ||
         `${process.env.APP_URL || 'https://partner-connector.replit.app'}/api/integrations/${provider}/callback`;
 
       if (!clientId) {
@@ -6858,8 +6949,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isConnected: false,
           syncStatus: 'idle',
         });
-        
-        return res.json({ 
+
+        return res.json({
           message: 'Integration saved. OAuth credentials not configured - please contact support to complete setup.',
           requiresSetup: true
         });
@@ -6868,7 +6959,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate OAuth authorization URL based on provider
       let authUrl = '';
       const state = crypto.randomBytes(16).toString('hex');
-      
+
       // Store state for verification
       await storage.createAccountingIntegration({
         userId: req.user.id,
@@ -6927,7 +7018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Exchange code for tokens
       const clientId = process.env[`${provider.toUpperCase()}_CLIENT_ID`];
       const clientSecret = process.env[`${provider.toUpperCase()}_CLIENT_SECRET`];
-      const redirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`] || 
+      const redirectUri = process.env[`${provider.toUpperCase()}_REDIRECT_URI`] ||
         `${process.env.APP_URL || 'https://partner-connector.replit.app'}/api/integrations/${provider}/callback`;
 
       let tokenUrl = '';
@@ -6964,7 +7055,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (tokenResponse.ok) {
           const tokens = await tokenResponse.json();
-          
+
           await storage.updateAccountingIntegration(integration.id, {
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
@@ -6999,7 +7090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/integrations/:provider/disconnect', requireAuth, async (req: any, res) => {
     try {
       const { provider } = req.params;
-      
+
       const integration = await storage.getAccountingIntegrationByProvider(req.user.id, provider);
       if (!integration) {
         return res.status(404).json({ message: 'Integration not found' });
@@ -7017,7 +7108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/integrations/:provider/sync', requireAuth, async (req: any, res) => {
     try {
       const { provider } = req.params;
-      
+
       const integration = await storage.getAccountingIntegrationByProvider(req.user.id, provider);
       if (!integration) {
         return res.status(404).json({ message: 'Integration not found' });

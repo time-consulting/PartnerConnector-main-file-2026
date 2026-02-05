@@ -7,6 +7,8 @@ declare module "express-session" {
   interface SessionData {
     userId?: string;
     referralCode?: string;
+    impersonatedUserId?: string;
+    realAdminId?: string;
   }
 }
 
@@ -19,7 +21,7 @@ export function getSession() {
     ttl: sessionTtl,
     tableName: "sessions",
   });
-  
+
   return session({
     secret: process.env.SESSION_SECRET!,
     store: sessionStore,
@@ -44,15 +46,38 @@ export const requireAuth: RequestHandler = async (req: any, res, next) => {
   if (!req.session.userId) {
     return res.status(401).json({ message: "Unauthorized" });
   }
-  
+
   // Fetch user from storage and attach to request
   try {
     const { storage } = await import('./storage');
+
+    // Check if admin is impersonating another user
+    if (req.session.impersonatedUserId && req.session.realAdminId) {
+      // Verify the real user is an admin
+      const realAdmin = await storage.getUser(req.session.realAdminId);
+      if (!realAdmin || !realAdmin.isAdmin) {
+        // Invalid impersonation session, clear it
+        delete req.session.impersonatedUserId;
+        delete req.session.realAdminId;
+      } else {
+        // Return impersonated user data
+        const impersonatedUser = await storage.getUser(req.session.impersonatedUserId);
+        if (impersonatedUser) {
+          req.user = impersonatedUser;
+          req.realAdmin = realAdmin;
+          req.isImpersonating = true;
+          return next();
+        }
+      }
+    }
+
+    // Normal authentication flow
     const user = await storage.getUser(req.session.userId);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
     req.user = user;
+    req.isImpersonating = false;
     next();
   } catch (error) {
     console.error('[requireAuth] Error fetching user:', error);
