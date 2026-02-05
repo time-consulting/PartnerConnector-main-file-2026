@@ -141,6 +141,8 @@ export function AdminDealsPipeline() {
       const date = format(now, "MMM d, yyyy");
       const logEntry = `${stageLabel} - ${time} - ${date}`;
 
+      console.log('📝 Sending progress log:', logEntry);
+
       return await apiRequest("PATCH", `/api/admin/referrals/${dealId}`, {
         dealStage: stage,
         appendProgressLog: logEntry, // This will be appended to adminNotes on backend

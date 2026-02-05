@@ -4013,15 +4013,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract appendProgressLog from updateData (it's not a DB field)
       const { appendProgressLog, ...dealUpdateData } = updateData;
 
+      console.log('📝 Backend received appendProgressLog:', appendProgressLog);
+
       // If frontend sends a progress log entry, append it
       if (appendProgressLog) {
         updatedAdminNotes = updatedAdminNotes
           ? `${updatedAdminNotes}\n${appendProgressLog}`
           : appendProgressLog;
+        console.log('✅ Appended to notes. New adminNotes:', updatedAdminNotes);
       } else {
         // Fallback to old admin audit note format
         const adminAuditNote = `\n[${new Date().toLocaleString()}] Updated by admin ${req.user.email}`;
         updatedAdminNotes += adminAuditNote;
+        console.log('⚠️ No appendProgressLog, using old format');
       }
 
       const deal = await storage.updateDeal(dealId, {
