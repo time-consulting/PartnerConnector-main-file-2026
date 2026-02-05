@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import SideNavigation from "@/components/side-navigation";
-import Navigation from "@/components/navigation";
+import Sidebar from "@/components/sidebar";
 import MlmVisualization from "@/components/mlm-visualization";
 import {
   ArrowLeft,
@@ -50,9 +49,8 @@ export default function AdminBackendPage() {
   if (!user?.isAdmin) {
     return (
       <div className="min-h-screen bg-background">
-        <SideNavigation />
-        <div className="lg:ml-16">
-          <Navigation />
+        <Sidebar />
+        <div className="ml-0 md:ml-64">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <Card className="bg-card border-border">
               <CardContent className="p-8 text-center">
@@ -68,10 +66,8 @@ export default function AdminBackendPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <SideNavigation />
-      <div className="lg:ml-16">
-        <Navigation />
-
+      <Sidebar />
+      <div className="ml-0 md:ml-64">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-6">
             <Button
