@@ -525,7 +525,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByReferralCode(referralCode: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.referralCode, referralCode));
+    // Case-insensitive lookup to handle "UU001" matching "uu001"
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(sql`UPPER(${users.referralCode}) = UPPER(${referralCode})`);
     return user;
   }
 
