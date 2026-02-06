@@ -2425,7 +2425,7 @@ export class DatabaseStorage implements IStorage {
       const directTeam = await db
         .select()
         .from(users)
-        .where(eq(users.referredBy, userId));
+        .where(eq(users.parentPartnerId, userId));
 
       // Process team member data with additional metrics
       const teamWithMetrics = await Promise.all(directTeam.map(async (member) => {
@@ -2433,13 +2433,13 @@ export class DatabaseStorage implements IStorage {
         const [teamSizeResult] = await db
           .select({ count: sql<number>`COUNT(*)` })
           .from(users)
-          .where(eq(users.referredBy, member.id));
+          .where(eq(users.parentPartnerId, member.id));
 
         // Get deals submitted by this member
         const [dealsResult] = await db
           .select({ count: sql<number>`COUNT(*)` })
           .from(deals)
-          .where(eq(deals.userId, member.id));
+          .where(eq(deals.referrerId, member.id));
 
         // Get total revenue for this member
         const [revenueResult] = await db
@@ -2468,7 +2468,7 @@ export class DatabaseStorage implements IStorage {
           firstName: member.firstName,
           lastName: member.lastName,
           createdAt: member.createdAt,
-          referredBy: member.referredBy,
+          parentPartnerId: member.parentPartnerId,
           partnerLevel: 1, // Direct referrals are L1
           teamSize: (teamSizeResult as any)?.count || 0,
           activeTeamMembers: 0, // TODO: Calculate active members
