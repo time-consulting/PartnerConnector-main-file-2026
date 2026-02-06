@@ -3136,6 +3136,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Platform-wide user stats for churn analytics
+  app.get('/api/admin/user-stats', requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const userStats = await storage.getAllUsersStats();
+      res.json(userStats);
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      res.status(500).json({ message: "Failed to fetch user stats" });
+    }
+  });
+
   app.get('/api/admin/users', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const users = await storage.getAllUsers();

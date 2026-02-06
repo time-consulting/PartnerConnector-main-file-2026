@@ -61,6 +61,7 @@ interface InviteMetrics {
   teamMembers: number;
   registered: number;
   active: number;
+  inactive: number;
 }
 
 interface ProgressionData {
@@ -131,7 +132,8 @@ export default function TeamManagement() {
   const inviteMetrics: InviteMetrics = referralStats || {
     teamMembers: 0,
     registered: 0,
-    active: 0
+    active: 0,
+    inactive: 0
   };
 
   const referralCode = typedUser?.referralCode || `PARTNER${typedUser?.id?.slice(0, 6) || '123'}`;
@@ -296,23 +298,21 @@ export default function TeamManagement() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-[#1a1f26] border-[#2a3441] rounded-2xl hover:border-cyan-500/50 transition-colors" data-testid="card-revenue">
+
+              <Card className="bg-[#1a1f26] border-[#2a3441] rounded-2xl hover:border-orange-500/50 transition-colors" data-testid="card-inactive">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-red-500 rounded-xl flex items-center justify-center">
+                      <RefreshCw className="w-5 h-5 text-white" />
                     </div>
-                    <span className="text-xs text-cyan-400 bg-cyan-400/10 px-2 py-1 rounded-full">
-                      {progressionData?.revenueGrowthPercent !== undefined
-                        ? `${progressionData.revenueGrowthPercent > 0 ? '+' : ''}${progressionData.revenueGrowthPercent}%`
-                        : '+0%'
-                      }
-                    </span>
+                    <span className="text-xs text-orange-400 bg-orange-400/10 px-2 py-1 rounded-full">Churn</span>
                   </div>
-                  <p className="text-gray-500 text-sm mb-1">Team Revenue</p>
-                  <div className="text-3xl font-bold text-white">£{progressionData?.totalRevenue || 0}</div>
+                  <p className="text-gray-500 text-sm mb-1">Inactive Partners</p>
+                  <div className="text-3xl font-bold text-white" data-testid="text-inactive-count">{inviteMetrics.inactive}</div>
+                  <p className="text-xs text-gray-600 mt-2">No deals in 6 months</p>
                 </CardContent>
               </Card>
+
 
               <Card className="bg-[#1a1f26] border-[#2a3441] rounded-2xl hover:border-amber-500/50 transition-colors" data-testid="card-xp">
                 <CardContent className="p-6">
@@ -477,8 +477,8 @@ export default function TeamManagement() {
                       <div
                         key={level.name}
                         className={`relative p-4 rounded-xl text-center transition-all ${currentXP >= level.xp
-                            ? `bg-gradient-to-br ${level.color} text-white shadow-lg`
-                            : 'bg-[#2a3441] text-gray-500'
+                          ? `bg-gradient-to-br ${level.color} text-white shadow-lg`
+                          : 'bg-[#2a3441] text-gray-500'
                           }`}
                         data-testid={`level-${level.name.toLowerCase()}`}
                       >

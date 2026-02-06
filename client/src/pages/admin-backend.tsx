@@ -17,6 +17,7 @@ import {
   Eye,
   Network,
   UserPlus,
+  RefreshCw,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -405,6 +406,10 @@ function AnalyticsTab() {
     queryKey: ['/api/admin/analytics'],
   });
 
+  const { data: userStats } = useQuery({
+    queryKey: ['/api/admin/user-stats'],
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -601,6 +606,80 @@ function AnalyticsTab() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Platform-Wide User Engagement & Churn Tracking */}
+      {userStats && (
+        <div>
+          <h3 className="text-lg font-semibold mb-4">Platform-Wide User Engagement & Churn</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-indigo-700 font-medium">Total Users</p>
+                    <p className="text-3xl font-bold text-indigo-900 mt-1">{userStats.totalUsers}</p>
+                  </div>
+                  <Users className="h-10 w-10 text-indigo-600 opacity-75" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs text-indigo-700">All registered users</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-green-700 font-medium">Active Users</p>
+                    <p className="text-3xl font-bold text-green-900 mt-1">{userStats.active}</p>
+                  </div>
+                  <TrendingUp className="h-10 w-10 text-green-600 opacity-75" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs text-green-700">
+                    {userStats.totalUsers > 0 ? ((userStats.active / userStats.totalUsers) * 100).toFixed(1) : 0}% - Approved deals in last 6 months
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-orange-700 font-medium">Inactive Users</p>
+                    <p className="text-3xl font-bold text-orange-900 mt-1">{userStats.inactive}</p>
+                  </div>
+                  <RefreshCw className="h-10 w-10 text-orange-600 opacity-75" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs text-orange-700">
+                    {userStats.totalUsers > 0 ? ((userStats.inactive / userStats.totalUsers) * 100).toFixed(1) : 0}% - Churned (no deals in 6 months)
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-gray-50 to-gray-100 border-gray-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-700 font-medium">Registered Only</p>
+                    <p className="text-3xl font-bold text-gray-900 mt-1">{userStats.registered}</p>
+                  </div>
+                  <UserPlus className="h-10 w-10 text-gray-600 opacity-75" />
+                </div>
+                <div className="mt-3">
+                  <p className="text-xs text-gray-700">
+                    {userStats.totalUsers > 0 ? ((userStats.registered / userStats.totalUsers) * 100).toFixed(1) : 0}% - Never had approved deals
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
