@@ -380,11 +380,19 @@ export class DatabaseStorage implements IStorage {
     // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
+    // In development, auto-verify emails for testing convenience
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const emailVerified = isDevelopment ? true : false;
+
+    if (isDevelopment) {
+      console.log('[AUTH] ⚠️  Development mode: Auto-verifying email for', email);
+    }
+
     // Create user
     const [user] = await db.insert(users).values({
       email,
       passwordHash,
-      emailVerified: false,
+      emailVerified,
       verificationToken,
       ...userData,
     }).returning();

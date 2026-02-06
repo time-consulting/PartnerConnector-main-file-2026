@@ -353,12 +353,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: 'Invalid email or password' });
       }
 
-      // Check if email is verified
-      if (!user.emailVerified) {
+      // Check if email is verified (skip in development for testing)
+      const isDevelopment = process.env.NODE_ENV === 'development';
+      if (!user.emailVerified && !isDevelopment) {
         return res.status(403).json({
           message: 'Please verify your email before logging in. Check your inbox for the verification link.',
           emailVerified: false
         });
+      }
+
+      // In development, log that we're bypassing verification
+      if (!user.emailVerified && isDevelopment) {
+        console.log('[AUTH] ⚠️  Development mode: Bypassing email verification for', user.email);
       }
 
       // Reset login attempts on successful login
