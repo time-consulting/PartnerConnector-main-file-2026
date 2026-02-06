@@ -3,10 +3,11 @@
  * This checks why the wrong upline is being displayed for a user
  */
 
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { neon } from "@neondatabase/serverless";
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { users, deals, partnerHierarchy } from "./shared/schema";
 import { eq, or, ilike } from "drizzle-orm";
+import 'dotenv/config';
 
 async function diagnose() {
     const databaseUrl = process.env.DATABASE_URL;
@@ -15,8 +16,11 @@ async function diagnose() {
         process.exit(1);
     }
 
-    const sql = neon(databaseUrl);
-    const db = drizzle(sql);
+    const pool = new Pool({
+        connectionString: databaseUrl,
+        ssl: { rejectUnauthorized: false }
+    });
+    const db = drizzle(pool);
 
     console.log("=== UPLINE DIAGNOSIS ===\n");
 
@@ -188,6 +192,7 @@ async function diagnose() {
     }
 
     console.log("\n=== DIAGNOSIS COMPLETE ===\n");
+    await pool.end();
 }
 
 diagnose().catch(console.error);

@@ -5,11 +5,13 @@
  * Run with: npx tsx fix-user-upline.ts
  */
 
-import { drizzle } from "drizzle-orm/neon-serverless";
-import { neon } from "@neondatabase/serverless";
+import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { users, partnerHierarchy } from "./shared/schema";
 import { eq, ilike } from "drizzle-orm";
 import 'dotenv/config';
+
+let pool: Pool;
 
 async function fixUpline() {
     const databaseUrl = process.env.DATABASE_URL;
@@ -18,8 +20,11 @@ async function fixUpline() {
         process.exit(1);
     }
 
-    const sql = neon(databaseUrl);
-    const db = drizzle(sql);
+    pool = new Pool({
+        connectionString: databaseUrl,
+        ssl: { rejectUnauthorized: false }
+    });
+    const db = drizzle(pool);
 
     console.log("=== FIX USER UPLINE ===\n");
 
