@@ -12,12 +12,12 @@ async function checkDealStatuses() {
       d.business_name,
       d.status,
       d.quote_amount,
-      d.created_at,
+      d.submitted_at,
       u.email as referrer_email
     FROM deals d
     JOIN users u ON d.referrer_id = u.id
     WHERE u.email = 'darren.business123@hotmail.com'
-    ORDER BY d.created_at DESC
+    ORDER BY d.submitted_at DESC
   `);
 
   console.log('\nDeals for darren.business123@hotmail.com:\n');
@@ -26,7 +26,7 @@ async function checkDealStatuses() {
     console.log(`[${i + 1}] ${deal.business_name}`);
     console.log(`    Status: "${deal.status}" ${deal.status === 'approved' ? '✅' : '❌'}`);
     console.log(`    Quote: $${deal.quote_amount || '0'}`);
-    console.log(`    Created: ${deal.created_at}`);
+    console.log(`    Submitted: ${deal.submitted_at}`);
     console.log(`    ID: ${deal.id}\n`);
   });
 
