@@ -70,7 +70,16 @@ export function AdminPaymentsPortal() {
   // Approve payment mutation (for needs_approval payments)
   const approveMutation = useMutation({
     mutationFn: async (payment: any) => {
-      const response = await apiRequest('POST', `/api/admin/referrals/${payment.dealId}/create-commission-approval`, {
+      console.log('[APPROVE] Payment object:', payment);
+      console.log('[APPROVE] Deal ID:', payment.deal?.id);
+      console.log('[APPROVE] Business Name:', payment.businessName || payment.deal?.businessName);
+      console.log('[APPROVE] Total Commission:', payment.totalCommission || payment.grossAmount);
+
+      if (!payment.deal?.id) {
+        throw new Error('Deal ID not found in payment object');
+      }
+
+      const response = await apiRequest('POST', `/api/admin/referrals/${payment.deal.id}/create-commission-approval`, {
         actualCommission: payment.totalCommission || payment.grossAmount,
         adminNotes: null,
         ratesData: null
