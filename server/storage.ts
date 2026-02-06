@@ -2246,51 +2246,53 @@ export class DatabaseStorage implements IStorage {
     // Active = has at least one approved deal in the last 6 months
     // Inactive = had approved deals but none in last 6 months (churn tracking)
     // Approval check: status OR dealStage indicates approval or beyond
-    const stats = await db
-      .select({
-        total: sql<number>`COUNT(*)`,
-        registered: sql<number>`COUNT(CASE WHEN ${users.partnerId} IS NOT NULL OR ${users.referralCode} IS NOT NULL THEN 1 END)`,
-        // Active = has approved deal in last 6 months
-        active: sql<number>`COUNT(CASE WHEN EXISTS (
-          SELECT 1 FROM ${deals}
-          WHERE ${deals.referrerId} = ${users.id}
+
+    // Use raw SQL to avoid Drizzle ORM issues with complex subqueries
+    const result = await db.execute(sql`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN partner_id IS NOT NULL OR referral_code IS NOT NULL THEN 1 END) as registered,
+        -- Active = has approved deal in last 6 months
+        COUNT(CASE WHEN EXISTS (
+          SELECT 1 FROM deals
+          WHERE deals.referrer_id = users.id
             AND (
-              ${deals.status} IN ('approved', 'live', 'completed')
-              OR ${deals.dealStage} IN ('approved', 'live_confirm_ltr', 'invoice_received', 'completed')
+              deals.status IN ('approved', 'live', 'completed')
+              OR deals.deal_stage IN ('approved', 'live_confirm_ltr', 'invoice_received', 'completed')
             )
-            AND ${deals.submittedAt} >= NOW() - INTERVAL '6 months'
-        ) THEN 1 END)`,
-        // Inactive = had approved deals but none in last 6 months
-        inactive: sql<number>`COUNT(CASE WHEN EXISTS (
-          SELECT 1 FROM ${deals}
-          WHERE ${deals.referrerId} = ${users.id}
+            AND deals.submitted_at >= NOW() - INTERVAL '6 months'
+        ) THEN 1 END) as active,
+        -- Inactive = had approved deals but none in last 6 months
+        COUNT(CASE WHEN EXISTS (
+          SELECT 1 FROM deals
+          WHERE deals.referrer_id = users.id
             AND (
-              ${deals.status} IN ('approved', 'live', 'completed')
-              OR ${deals.dealStage} IN ('approved', 'live_confirm_ltr', 'invoice_received', 'completed')
+              deals.status IN ('approved', 'live', 'completed')
+              OR deals.deal_stage IN ('approved', 'live_confirm_ltr', 'invoice_received', 'completed')
             )
         ) AND NOT EXISTS (
-          SELECT 1 FROM ${deals}
-          WHERE ${deals.referrerId} = ${users.id}
+          SELECT 1 FROM deals
+          WHERE deals.referrer_id = users.id
             AND (
-              ${deals.status} IN ('approved', 'live', 'completed')
-              OR ${deals.dealStage} IN ('approved', 'live_confirm_ltr', 'invoice_received', 'completed')
+              deals.status IN ('approved', 'live', 'completed')
+              OR deals.deal_stage IN ('approved', 'live_confirm_ltr', 'invoice_received', 'completed')
             )
-            AND ${deals.submittedAt} >= NOW() - INTERVAL '6 months'
-        ) THEN 1 END)`
-      })
-      .from(users)
-      .where(eq(users.parentPartnerId, userId));
+            AND deals.submitted_at >= NOW() - INTERVAL '6 months'
+        ) THEN 1 END) as inactive
+      FROM users
+      WHERE parent_partner_id = ${userId}
+    `);
 
-    const result = stats[0] || { total: 0, registered: 0, active: 0, inactive: 0 };
+    const stats = result.rows[0] || { total: 0, registered: 0, active: 0, inactive: 0 };
 
     return {
-      sent: result.total,
-      opened: result.registered,
-      clicked: result.registered,
-      registered: result.registered,
-      active: result.active,
-      inactive: result.inactive,
-      teamMembers: result.total
+      sent: Number(stats.total),
+      opened: Number(stats.registered),
+      clicked: Number(stats.registered),
+      registered: Number(stats.registered),
+      active: Number(stats.active),
+      inactive: Number(stats.inactive),
+      teamMembers: Number(stats.total)
     };
   }
 
