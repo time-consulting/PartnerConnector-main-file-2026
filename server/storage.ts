@@ -2245,9 +2245,11 @@ export class DatabaseStorage implements IStorage {
       .select({
         total: sql<number>`COUNT(*)`,
         registered: sql<number>`COUNT(CASE WHEN ${users.partnerId} IS NOT NULL OR ${users.referralCode} IS NOT NULL THEN 1 END)`,
+        // Active = has at least one approved deal (status: approved, live, completed)
         active: sql<number>`COUNT(CASE WHEN EXISTS (
-          SELECT 1 FROM ${users} children 
-          WHERE children.parent_partner_id = ${users.id}
+          SELECT 1 FROM ${deals}
+          WHERE ${deals.referrerId} = ${users.id}
+            AND ${deals.status} IN ('approved', 'live', 'completed')
         ) THEN 1 END)`
       })
       .from(users)
@@ -2274,7 +2276,7 @@ export class DatabaseStorage implements IStorage {
     referralCode: string | null;
     hasSubmittedDeals: number;
   }>> {
-    // Efficient SQL: Single query with LEFT JOIN to get referral counts
+    // Efficient SQL: Single query with LEFT JOIN to get deal counts
     const teamReferrals = await db
       .select({
         id: users.id,
@@ -2284,7 +2286,8 @@ export class DatabaseStorage implements IStorage {
         createdAt: users.createdAt,
         partnerId: users.partnerId,
         referralCode: users.referralCode,
-        referralCount: sql<number>`COUNT(${deals.id})`,
+        totalDeals: sql<number>`COUNT(${deals.id})`,
+        approvedDeals: sql<number>`COUNT(CASE WHEN ${deals.status} IN ('approved', 'live', 'completed') THEN 1 END)`,
         hasChildren: sql<number>`(SELECT COUNT(*) FROM ${users} children WHERE children.parent_partner_id = ${users.id})`
       })
       .from(users)
@@ -2293,9 +2296,9 @@ export class DatabaseStorage implements IStorage {
       .groupBy(users.id, users.firstName, users.lastName, users.email, users.createdAt, users.partnerId, users.referralCode);
 
     return teamReferrals.map((member) => {
-      // Simple status: 'active' if has children, else 'registered'
+      // Active status: has at least one approved deal
       let status = 'registered';
-      if (member.hasChildren > 0) {
+      if (member.approvedDeals > 0) {
         status = 'active';
       }
 
@@ -2306,7 +2309,7 @@ export class DatabaseStorage implements IStorage {
         status,
         joinedAt: member.createdAt,
         referralCode: member.referralCode,
-        hasSubmittedDeals: member.referralCount
+        hasSubmittedDeals: member.totalDeals
       };
     });
   }
