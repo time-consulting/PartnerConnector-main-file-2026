@@ -71,7 +71,7 @@ import {
 } from "@shared/schema";
 import { googleSheetsService, type DealSheetData } from "./googleSheets";
 import { db } from "./db";
-import { eq, desc, and, sql, gte, isNull } from "drizzle-orm";
+import { eq, desc, and, sql, gte, isNull, ilike } from "drizzle-orm";
 
 export interface IStorage {
   // User operations - Auth
@@ -333,7 +333,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await db.select().from(users).where(ilike(users.email, email));
     return user;
   }
 
@@ -360,8 +360,10 @@ export class DatabaseStorage implements IStorage {
     const bcrypt = await import('bcrypt');
     const crypto = await import('crypto');
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Check if email already exists
-    const existing = await this.getUserByEmail(email);
+    const existing = await this.getUserByEmail(normalizedEmail);
     if (existing) {
       throw new Error('Email already registered');
     }
@@ -385,12 +387,12 @@ export class DatabaseStorage implements IStorage {
     const emailVerified = isDevelopment ? true : false;
 
     if (isDevelopment) {
-      console.log('[AUTH] ⚠️  Development mode: Auto-verifying email for', email);
+      console.log('[AUTH] ⚠️  Development mode: Auto-verifying email for', normalizedEmail);
     }
 
     // Create user
     const [user] = await db.insert(users).values({
-      email,
+      email: normalizedEmail,
       passwordHash,
       emailVerified,
       verificationToken,
@@ -420,14 +422,18 @@ export class DatabaseStorage implements IStorage {
       await this.generatePartnerId(user.id, referrerPartnerId);
     }
 
-    // Send verification email via GHL
-    const { ghlEmailService } = await import('./ghlEmailService');
-    await ghlEmailService.sendEmailVerification(
-      user.email!,
-      verificationToken,
-      userData.firstName || undefined,
-      userData.lastName || undefined
-    );
+    // Send verification email via GHL (non-blocking - don't fail registration if email fails)
+    try {
+      const { ghlEmailService } = await import('./ghlEmailService');
+      await ghlEmailService.sendEmailVerification(
+        user.email!,
+        verificationToken,
+        userData.firstName || undefined,
+        userData.lastName || undefined
+      );
+    } catch (emailError) {
+      console.error('[AUTH] Failed to send verification email (user still created):', emailError);
+    }
 
     return await this.getUser(user.id) as User;
   }
@@ -459,7 +465,7 @@ export class DatabaseStorage implements IStorage {
 
     // If no user by ID, check by email (to handle email unique constraint)
     if (!existingUser && userData.email) {
-      const [userByEmail] = await db.select().from(users).where(eq(users.email, userData.email));
+      const [userByEmail] = await db.select().from(users).where(ilike(users.email, userData.email));
       existingUser = userByEmail;
     }
 
