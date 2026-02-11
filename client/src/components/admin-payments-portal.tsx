@@ -68,45 +68,40 @@ export function AdminPaymentsPortal() {
   });
 
   // Approve payment mutation (for needs_approval payments)
+  // Uses the simpler /approve endpoint that takes paymentId directly
   const approveMutation = useMutation({
     mutationFn: async (payment: any) => {
-      console.log('[APPROVE] Payment object:', payment);
-      console.log('[APPROVE] Deal ID:', payment.deal?.id);
-      console.log('[APPROVE] dealId field:', payment.dealId);
-      console.log('[APPROVE] Business Name:', payment.businessName || payment.deal?.businessName);
-      console.log('[APPROVE] Total Commission:', payment.totalCommission || payment.grossAmount);
+      console.log('[APPROVE-V3] Payment ID:', payment.id);
+      console.log('[APPROVE-V3] Business Name:', payment.businessName);
+      console.log('[APPROVE-V3] Total Commission:', payment.totalCommission || payment.grossAmount);
 
-      if (!payment.deal?.id) {
-        const errorMsg = `Deal ID not found in payment object. Keys: ${Object.keys(payment).join(', ')}. dealId field: ${payment.dealId}`;
-        console.error('[APPROVE] ERROR:', errorMsg);
+      if (!payment.id) {
+        const errorMsg = `Payment ID is missing! Keys: ${Object.keys(payment).join(', ')}`;
         alert(`DEBUG ERROR: ${errorMsg}`);
         throw new Error(errorMsg);
       }
 
-      const url = `/api/admin/referrals/${payment.deal.id}/create-commission-approval`;
-      console.log('[APPROVE] Calling:', url);
+      // Use the simple /approve endpoint — takes paymentId directly, no deal lookup needed
+      const url = `/api/admin/payments/${payment.id}/approve`;
+      console.log('[APPROVE-V3] Calling:', url);
 
-      const response = await apiRequest('POST', url, {
-        actualCommission: payment.totalCommission || payment.grossAmount,
-        adminNotes: null,
-        ratesData: null
-      });
-
+      const response = await apiRequest('POST', url);
       const result = await response.json();
-      console.log('[APPROVE] Response:', result);
+      console.log('[APPROVE-V3] Response:', result);
       return result;
     },
     onSuccess: (data) => {
-      console.log('[APPROVE] SUCCESS:', data);
+      console.log('[APPROVE-V3] SUCCESS:', data);
       queryClient.invalidateQueries({ queryKey: ['/api/admin/payments/needs-approval'] });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/commission-payments/approved'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/payments/live-accounts'] });
       toast({
         title: "Payment Approved",
-        description: data?.message || "Commission payment has been approved successfully.",
+        description: data?.message || "Commission payment has been approved and distributed.",
       });
     },
     onError: (error: any) => {
-      console.error('[APPROVE] FAILED:', error);
+      console.error('[APPROVE-V3] FAILED:', error);
       alert(`APPROVE FAILED: ${error.message}`);
       toast({
         title: "Approval Failed",
@@ -343,7 +338,7 @@ export function AdminPaymentsPortal() {
     <div className="space-y-6">
       {/* Version Banner - update timestamp to verify deployment */}
       <div className="px-4 py-2 rounded-lg text-xs font-mono" style={{ background: 'rgba(34, 211, 238, 0.1)', border: '1px solid rgba(34, 211, 238, 0.3)', color: '#22d3ee' }}>
-        🚀 Payment Portal v2.3 — Last deploy: 11 Feb 2026 20:31 UTC — DEBUG: alert popups on approve success/fail
+        🚀 Payment Portal v3.0 — Last deploy: 11 Feb 2026 20:50 UTC — REWIRED: Approve uses paymentId directly
       </div>
       {/* Header */}
       <div
