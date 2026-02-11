@@ -3502,7 +3502,8 @@ export class DatabaseStorage implements IStorage {
     dealCreatorId: string,
     clientBusinessName?: string,
     adminNotes?: string | null,
-    ratesData?: any
+    ratesData?: any,
+    approvedByAdminId?: string
   ): Promise<CommissionApproval[]> {
     const approvals: CommissionApproval[] = [];
 
@@ -3531,6 +3532,8 @@ export class DatabaseStorage implements IStorage {
       businessName: clientBusinessName,
       paymentStatus: 'approved',  // Ready for withdrawal
       approvalStatus: 'approved',
+      approvedBy: approvedByAdminId || null,
+      approvedAt: new Date(),
     });
 
     console.log(`[COMMISSION] Created direct commission: £${creatorCommissionAmount} (60%) for user ${dealCreatorId}`);
@@ -3613,6 +3616,8 @@ export class DatabaseStorage implements IStorage {
             businessName: clientBusinessName,
             paymentStatus: 'approved',  // Ready for withdrawal
             approvalStatus: 'approved',
+            approvedBy: approvedByAdminId || null,
+            approvedAt: new Date(),
           });
           console.log(`[COMMISSION] ✅ Successfully created payment record for Level ${entry.level}: ID=${paymentResult?.id}`);
         } catch (paymentError: any) {
@@ -3665,6 +3670,8 @@ export class DatabaseStorage implements IStorage {
     paymentDate?: Date;
     transferReference?: string;
     notes?: string;
+    approvedBy?: string | null;
+    approvedAt?: Date | null;
   }): Promise<any> {
     const [payment] = await db.insert(commissionPayments).values({
       dealId: paymentData.dealId,
@@ -3680,6 +3687,8 @@ export class DatabaseStorage implements IStorage {
       paymentDate: paymentData.paymentDate || null,
       transferReference: paymentData.transferReference || null,
       notes: paymentData.notes || null,
+      approvedBy: paymentData.approvedBy || null,
+      approvedAt: paymentData.approvedAt || null,
     }).returning();
     return payment;
   }

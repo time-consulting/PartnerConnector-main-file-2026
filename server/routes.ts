@@ -2794,6 +2794,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId } = req.params;
       const { actualCommission, adminNotes, ratesData } = req.body;
 
+      // Guard: Check if commissions have already been distributed for this deal
+      const existingPayments = await storage.getCommissionPaymentsByDeal(dealId);
+      const existingApprovedPayments = existingPayments.filter(
+        (p: any) => p.paymentStatus === 'approved' || p.paymentStatus === 'paid'
+      );
+      if (existingApprovedPayments.length > 0) {
+        return res.status(400).json({
+          message: `Commissions have already been distributed for this deal (${existingApprovedPayments.length} payment(s) exist). Cannot approve again.`
+        });
+      }
+
       // First update the referral with actual commission
       await storage.updateDeal(dealId, {
         actualCommission: actualCommission,
@@ -2808,19 +2819,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Deal not found" });
       }
 
-      // ✅ NEW: Distribute commissions across hierarchy
-      // - Deal creator gets 60% automatically
-      // - System searches for upline referrers in partner_hierarchy
-      // - Level 1 up gets 20% override
-      // - Level 2 up gets 10% override
+      // ✅ Distribute commissions across hierarchy, passing admin ID for approvedBy
       const approvals = await storage.distributeCommissions(
         dealId,
         actualCommission,
         deal.referrerId,
         deal.businessName,
         adminNotes,
-        ratesData
+        ratesData,
+        req.user.id  // Pass admin ID so split records get approvedBy set
       );
+
+      // ✅ FIX: Update the original payment record(s) status from 'needs_approval' to 'distributed'
+      // 'distributed' means the gross payment has been split into individual commission payments
+      // This removes it from both the Pending queue AND the Approved queue (avoiding double-counting)
+      const pendingPayments = existingPayments.filter(
+        (p: any) => p.paymentStatus === 'needs_approval'
+      );
+      for (const pendingPayment of pendingPayments) {
+        await db
+          .update(commissionPayments)
+          .set({
+            paymentStatus: 'distributed',
+            approvalStatus: 'approved',
+            approvedBy: req.user.id,
+            approvedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(commissionPayments.id, pendingPayment.id));
+      }
 
       // Create notifications for all recipients
       for (const approval of approvals) {
