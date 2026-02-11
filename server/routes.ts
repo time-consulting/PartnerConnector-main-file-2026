@@ -2794,14 +2794,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { dealId } = req.params;
       const { actualCommission, adminNotes, ratesData } = req.body;
 
-      // Guard: Check if commissions have already been distributed for this deal
+      // Fetch all existing commission payments for this deal
       const existingPayments = await storage.getCommissionPaymentsByDeal(dealId);
       const existingApprovedPayments = existingPayments.filter(
         (p: any) => p.paymentStatus === 'approved' || p.paymentStatus === 'paid'
       );
+      const pendingPayments = existingPayments.filter(
+        (p: any) => p.paymentStatus === 'needs_approval'
+      );
+
+      console.log(`[APPROVAL] Deal ${dealId}: ${existingPayments.length} total payments, ${existingApprovedPayments.length} approved/paid, ${pendingPayments.length} pending`);
+
+      // ✅ ALWAYS: Update any pending payment records to 'distributed' so they leave the Pending queue
+      for (const pendingPayment of pendingPayments) {
+        await db
+          .update(commissionPayments)
+          .set({
+            paymentStatus: 'distributed',
+            approvalStatus: 'approved',
+            approvedBy: req.user.id,
+            approvedAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(commissionPayments.id, pendingPayment.id));
+        console.log(`[APPROVAL] Updated payment ${pendingPayment.id} from needs_approval → distributed`);
+      }
+
+      // If commissions were already distributed, don't create duplicates
       if (existingApprovedPayments.length > 0) {
-        return res.status(400).json({
-          message: `Commissions have already been distributed for this deal (${existingApprovedPayments.length} payment(s) exist). Cannot approve again.`
+        console.log(`[APPROVAL] Commissions already exist for deal ${dealId}, skipping distribution`);
+        return res.json({
+          success: true,
+          message: `Commissions already distributed. Cleaned up ${pendingPayments.length} pending record(s).`,
+          alreadyDistributed: true,
+          cleanedUp: pendingPayments.length,
         });
       }
 
@@ -2827,27 +2853,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         deal.businessName,
         adminNotes,
         ratesData,
-        req.user.id  // Pass admin ID so split records get approvedBy set
+        req.user.id
       );
-
-      // ✅ FIX: Update the original payment record(s) status from 'needs_approval' to 'distributed'
-      // 'distributed' means the gross payment has been split into individual commission payments
-      // This removes it from both the Pending queue AND the Approved queue (avoiding double-counting)
-      const pendingPayments = existingPayments.filter(
-        (p: any) => p.paymentStatus === 'needs_approval'
-      );
-      for (const pendingPayment of pendingPayments) {
-        await db
-          .update(commissionPayments)
-          .set({
-            paymentStatus: 'distributed',
-            approvalStatus: 'approved',
-            approvedBy: req.user.id,
-            approvedAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(commissionPayments.id, pendingPayment.id));
-      }
 
       // Create notifications for all recipients
       for (const approval of approvals) {

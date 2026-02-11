@@ -330,7 +330,7 @@ export function AdminPaymentsPortal() {
     <div className="space-y-6">
       {/* Version Banner - update timestamp to verify deployment */}
       <div className="px-4 py-2 rounded-lg text-xs font-mono" style={{ background: 'rgba(34, 211, 238, 0.1)', border: '1px solid rgba(34, 211, 238, 0.3)', color: '#22d3ee' }}>
-        🚀 Payment Portal v2.1 — Last deploy: 11 Feb 2026 20:16 UTC — Fixes: approval status update, duplicate guard, approvedBy field
+        🚀 Payment Portal v2.2 — Last deploy: 11 Feb 2026 20:18 UTC — Fix: always clean pending records before guard check
       </div>
       {/* Header */}
       <div
