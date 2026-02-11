@@ -62,10 +62,7 @@ export default function CommissionsPage() {
     queryKey: ["/api/commission-payments"]
   });
 
-  // Fetch team payments
-  const { data: teamPayments = [], isLoading: teamLoading } = useQuery({
-    queryKey: ["/api/commission-payments/team"]
-  });
+
 
   // Fetch withdrawn/paid commissions
   const { data: withdrawnPayments = [], isLoading: withdrawnLoading } = useQuery({
@@ -173,9 +170,13 @@ export default function CommissionsPage() {
   };
 
   const getLevelLabel = (level: number) => {
-    if (level === 1) return "Direct Commission";
-    if (level === 2) return "Level 1 Override";
-    if (level === 3) return "Level 2 Override";
+    // Level numbering:
+    // distributeCommissions: 0 = direct (60%), 1 = L1 override (20%), 2 = L2 override (10%)
+    // create-commission route: 1 = direct (60%), 2 = L1 override (20%), 3 = L2 override (10%)
+    if (level === 0) return "Direct Commission (60%)";
+    if (level === 1) return "L1 Override (20%)";
+    if (level === 2) return "L2 Override (10%)";
+    if (level === 3) return "L2 Override (10%)";
     return `Level ${level}`;
   };
 
@@ -266,9 +267,8 @@ export default function CommissionsPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
               <TabsList className="bg-secondary">
-                <TabsTrigger value="commissions" data-testid="tab-commissions">Commissions</TabsTrigger>
+                <TabsTrigger value="commissions" data-testid="tab-commissions">All Commissions</TabsTrigger>
                 <TabsTrigger value="withdrawals" data-testid="tab-withdrawals">Withdrawals</TabsTrigger>
-                <TabsTrigger value="team" data-testid="tab-team">Team payments</TabsTrigger>
               </TabsList>
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
@@ -423,62 +423,7 @@ export default function CommissionsPage() {
               </Card>
             </TabsContent>
 
-            {/* Team Payments Tab */}
-            <TabsContent value="team" className="space-y-4">
-              <Card className="border-primary/30 bg-card">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Team Override Payments</CardTitle>
-                  <CardDescription className="text-muted-foreground">
-                    Commission overrides from your downline team members (Level 1: 20%, Level 2: 10%)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {teamLoading ? (
-                    <div className="text-center py-8 text-muted-foreground">Loading...</div>
-                  ) : teamPayments.filter((p: any) => p.level >= 1).length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>No team override payments yet</p>
-                      <p className="text-sm mt-2">Build your team to earn override commissions!</p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border hover:bg-secondary/50">
-                          <TableHead className="text-muted-foreground">Business Name</TableHead>
-                          <TableHead className="text-muted-foreground">Override Level</TableHead>
-                          <TableHead className="text-muted-foreground">Commission status</TableHead>
-                          <TableHead className="text-muted-foreground">Payment status</TableHead>
-                          <TableHead className="text-muted-foreground">Created</TableHead>
-                          <TableHead className="text-right text-muted-foreground">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {teamPayments.filter((p: any) => p.level >= 1).map((payment: any) => (
-                          <TableRow key={payment.id} className="border-border hover:bg-secondary/30">
-                            <TableCell className="font-medium text-foreground">{payment.businessName || "N/A"}</TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
-                                {payment.level === 2 ? "Level 1 (20%)" : "Level 2 (10%)"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{getStatusBadge(payment)}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="border-border text-foreground">{payment.paymentStatus}</Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {payment.createdAt ? format(new Date(payment.createdAt), 'dd MMM yyyy') : 'N/A'}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-primary">
-                              £{parseFloat(payment.amount).toFixed(2)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+
           </Tabs>
         </div>
 

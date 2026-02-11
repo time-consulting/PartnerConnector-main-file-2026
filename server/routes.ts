@@ -5316,23 +5316,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get team commission payments (downline)
-  app.get('/api/commission-payments/team', requireAuth, async (req: any, res) => {
-    try {
-      const userId = req.user.id;
-
-      // Get user's downline (direct referrals and their referrals)
-      const teamMembers = await storage.getDownlineUsers(userId);
-
-      // Get commission payments for team members where current user is recipient
-      const teamPayments = await storage.getTeamCommissionPayments(userId);
-
-      res.json(teamPayments);
-    } catch (error) {
-      console.error("Error fetching team commission payments:", error);
-      res.status(500).json({ message: "Failed to fetch team commission payments" });
-    }
-  });
 
   // Get withdrawn/paid commission payments
   app.get('/api/commission-payments/withdrawn', requireAuth, async (req: any, res) => {

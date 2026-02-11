@@ -309,9 +309,7 @@ export interface IStorage {
   // Commission payment operations
   getCommissionPaymentsByRecipient(recipientId: string): Promise<any[]>;
   getCommissionPaymentsByDeal(dealId: string): Promise<any[]>;
-  getTeamCommissionPayments(userId: string): Promise<any[]>;
   updateCommissionPaymentApproval(paymentId: string, approvalStatus: string, queryNotes: string | null): Promise<any>;
-  getDownlineUsers(userId: string): Promise<any[]>;
   createCommissionPayment(paymentData: any): Promise<any>;
 
   // Test data seeding
@@ -3702,14 +3700,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(commissionPayments.createdAt));
   }
 
-  async getTeamCommissionPayments(userId: string): Promise<any[]> {
-    // Get commission payments where the user is recipient and level is 2 or 3 (override payments)
-    return await db
-      .select()
-      .from(commissionPayments)
-      .where(eq(commissionPayments.recipientId, userId))
-      .orderBy(desc(commissionPayments.createdAt));
-  }
 
   async updateCommissionPaymentApproval(paymentId: string, approvalStatus: string, queryNotes: string | null): Promise<any> {
     const updateData: any = {
@@ -3734,23 +3724,6 @@ export class DatabaseStorage implements IStorage {
     return payment;
   }
 
-  async getDownlineUsers(userId: string): Promise<any[]> {
-    // Get all users who have this user in their parent chain
-    const allUsers = await this.getAllUsers();
-    const downline: any[] = [];
-
-    // Find direct children (level 1)
-    const directChildren = allUsers.filter((u: any) => u.parentPartnerId === userId);
-    downline.push(...directChildren);
-
-    // Find grandchildren (level 2)
-    for (const child of directChildren) {
-      const grandchildren = allUsers.filter((u: any) => u.parentPartnerId === child.id);
-      downline.push(...grandchildren);
-    }
-
-    return downline;
-  }
 
   async processCommissionPayment(approvalId: string, paymentReference: string): Promise<void> {
     await db
