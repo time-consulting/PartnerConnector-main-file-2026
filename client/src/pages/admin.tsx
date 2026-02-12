@@ -102,10 +102,10 @@ export default function AdminDashboard() {
                 >
                   <MessageSquare className="h-4 w-4 text-primary" />
                   Messages
-                  {notificationCounts.messages > 0 && (
-                    <Badge className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-xs px-1.5 py-0.5">
-                      {notificationCounts.messages}
-                    </Badge>
+                  {(notificationCounts as any).messages > 0 && (
+                    <span className="absolute -top-2.5 -right-2.5 min-w-[22px] h-[22px] bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center px-1 animate-pulse ring-2 ring-red-500/40 shadow-lg shadow-red-500/30">
+                      {(notificationCounts as any).messages}
+                    </span>
                   )}
                 </Button>
                 <Button
