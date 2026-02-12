@@ -31,6 +31,7 @@ export default function AdminMessagesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/notifications"] });
     },
   });
 
@@ -41,6 +42,7 @@ export default function AdminMessagesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/messages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/notifications"] });
     },
   });
 
@@ -139,8 +141,8 @@ export default function AdminMessagesPage() {
                     <Card
                       key={message.id}
                       className={`bg-card border-border transition-all duration-200 ${isUnread
-                          ? 'border-l-4 border-l-primary shadow-md shadow-primary/5'
-                          : 'hover:border-primary/30'
+                        ? 'border-l-4 border-l-primary shadow-md shadow-primary/5'
+                        : 'hover:border-primary/30'
                         }`}
                     >
                       <CardContent className="p-6">
@@ -196,8 +198,8 @@ export default function AdminMessagesPage() {
 
                           {message.businessName && (
                             <div className={`rounded-lg px-3 py-2 ${isUnread
-                                ? 'bg-primary/15 border border-primary/30'
-                                : 'bg-primary/10 border border-primary/20'
+                              ? 'bg-primary/15 border border-primary/30'
+                              : 'bg-primary/10 border border-primary/20'
                               }`}>
                               <p className="text-sm font-medium text-primary">
                                 Deal: {message.businessName}
@@ -206,8 +208,8 @@ export default function AdminMessagesPage() {
                           )}
 
                           <div className={`rounded-lg p-4 border ${isUnread
-                              ? 'bg-secondary/70 border-border'
-                              : 'bg-secondary/50 border-border'
+                            ? 'bg-secondary/70 border-border'
+                            : 'bg-secondary/50 border-border'
                             }`}>
                             <p className={`${isUnread ? 'text-foreground font-medium' : 'text-foreground/80'}`}>
                               {message.message}

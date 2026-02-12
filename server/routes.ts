@@ -1693,6 +1693,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin notification counts for dashboard badges
+  app.get('/api/admin/notifications', requireAuth, requireAdmin, async (req: any, res) => {
+    try {
+      const messages = await storage.getAllUnifiedMessages();
+      const unreadMessages = messages.filter((m: any) => !m.read && m.authorType !== 'admin').length;
+
+      res.json({
+        submissions: 0,
+        signups: 0,
+        pipeline: 0,
+        messages: unreadMessages,
+        completedDeals: 0,
+      });
+    } catch (error) {
+      console.error("Error fetching notification counts:", error);
+      res.json({ submissions: 0, signups: 0, pipeline: 0, messages: 0, completedDeals: 0 });
+    }
+  });
+
   app.get('/api/admin/signups/:quoteId', requireAuth, requireAdmin, async (req: any, res) => {
     try {
       const signup = await storage.getSignupDetails(req.params.quoteId);
