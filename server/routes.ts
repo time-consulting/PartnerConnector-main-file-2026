@@ -1159,6 +1159,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== USER MESSAGING ENDPOINTS =====
+
+  // Get all messages across all deals for the logged-in partner
+  app.get('/api/user/messages', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get all deals belonging to this user
+      const userDeals = await storage.getDealsWithQuotes(userId);
+
+      if (!userDeals || userDeals.length === 0) {
+        return res.json([]);
+      }
+
+      // Fetch messages for each deal using the unified method
+      const allMessages: any[] = [];
+      for (const deal of userDeals) {
+        const dealMessages = await storage.getUnifiedDealMessages(deal.id);
+        // Attach deal info to each message
+        dealMessages.forEach((msg: any) => {
+          allMessages.push({
+            ...msg,
+            dealId: deal.id,
+            businessName: deal.businessName || 'Unknown Deal',
+          });
+        });
+      }
+
+      // Sort by most recent first
+      allMessages.sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      res.json(allMessages);
+    } catch (error) {
+      console.error("Error fetching user messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Get unread message count for the logged-in partner
+  app.get('/api/user/unread-count', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get all deals belonging to this user
+      const userDeals = await storage.getDealsWithQuotes(userId);
+
+      if (!userDeals || userDeals.length === 0) {
+        return res.json({ unreadCount: 0 });
+      }
+
+      let unreadCount = 0;
+      for (const deal of userDeals) {
+        const dealMessages = await storage.getUnifiedDealMessages(deal.id);
+        // Count unread admin messages (messages FROM admin TO partner)
+        unreadCount += dealMessages.filter((msg: any) => msg.isAdmin && !msg.read).length;
+      }
+
+      res.json({ unreadCount });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
   // Unified deal messages endpoints - fetches from both dealMessages and quoteQA tables
   app.get('/api/deals/:dealId/messages', requireAuth, async (req: any, res) => {
     try {

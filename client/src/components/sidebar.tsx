@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  DollarSign, 
+import { useQuery } from "@tanstack/react-query";
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  DollarSign,
   Settings,
   LogOut,
   ChevronRight,
@@ -49,6 +50,13 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([]);
   const { toast } = useToast();
 
+  // Fetch unread message count
+  const { data: unreadData } = useQuery({
+    queryKey: ["/api/user/unread-count"],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+  const unreadCount = (unreadData as any)?.unreadCount || 0;
+
   const handleMouseEnter = () => {
     setIsExpanded(true);
     onExpandChange?.(true);
@@ -78,8 +86,8 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
   };
 
   const toggleDropdown = (label: string) => {
-    setOpenDropdowns(prev => 
-      prev.includes(label) 
+    setOpenDropdowns(prev =>
+      prev.includes(label)
         ? prev.filter(l => l !== label)
         : [...prev, label]
     );
@@ -95,6 +103,7 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
         { icon: Target, label: "Track Deals", path: "/track-deals" },
       ]
     },
+    { icon: MessageSquare, label: "Messages", path: "/messages" },
     {
       icon: TrendingUp,
       label: "Pipeline",
@@ -115,33 +124,47 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
   ];
 
   const isActive = (path: string) => location === path;
-  
+
   const isGroupActive = (group: MenuGroup) => {
     return group.items.some(item => location === item.path);
   };
 
-  const renderMenuItem = (item: MenuItem) => (
-    <Link key={item.path} href={item.path}>
-      <button
-        className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-          isActive(item.path)
-            ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
-            : "text-sidebar-foreground hover:bg-sidebar-accent"
-        }`}
-        data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-      >
-        <item.icon className="w-5 h-5 flex-shrink-0" />
-        {isExpanded && (
-          <span className="text-sm font-medium whitespace-nowrap">
-            {item.label}
-          </span>
-        )}
-        {isExpanded && isActive(item.path) && (
-          <ChevronRight className="w-4 h-4 ml-auto" />
-        )}
-      </button>
-    </Link>
-  );
+  const renderMenuItem = (item: MenuItem) => {
+    const isMessages = item.label === "Messages";
+    return (
+      <Link key={item.path} href={item.path}>
+        <button
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive(item.path)
+              ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25"
+              : "text-sidebar-foreground hover:bg-sidebar-accent"
+            }`}
+          data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+        >
+          <div className="relative">
+            <item.icon className="w-5 h-5 flex-shrink-0" />
+            {isMessages && unreadCount > 0 && !isExpanded && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </div>
+          {isExpanded && (
+            <span className="text-sm font-medium whitespace-nowrap flex-1">
+              {item.label}
+            </span>
+          )}
+          {isExpanded && isMessages && unreadCount > 0 && (
+            <span className="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse ring-2 ring-red-500/30">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+          {isExpanded && !isMessages && isActive(item.path) && (
+            <ChevronRight className="w-4 h-4 ml-auto" />
+          )}
+        </button>
+      </Link>
+    );
+  };
 
   const renderMenuGroup = (group: MenuGroup) => {
     const isOpen = openDropdowns.includes(group.label);
@@ -151,11 +174,10 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
       <div key={group.label} className="space-y-1">
         <button
           onClick={() => isExpanded && toggleDropdown(group.label)}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-            groupActive
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${groupActive
               ? "bg-primary/20 text-primary border border-primary/30"
               : "text-sidebar-foreground hover:bg-sidebar-accent"
-          }`}
+            }`}
           data-testid={`nav-${group.label.toLowerCase()}`}
         >
           <group.icon className="w-5 h-5 flex-shrink-0" />
@@ -164,23 +186,22 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
               <span className="text-sm font-medium whitespace-nowrap">
                 {group.label}
               </span>
-              <ChevronDown 
-                className={`w-4 h-4 ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`} 
+              <ChevronDown
+                className={`w-4 h-4 ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`}
               />
             </>
           )}
         </button>
-        
+
         {isExpanded && isOpen && (
           <div className="ml-4 pl-4 border-l border-sidebar-border space-y-1">
             {group.items.map(item => (
               <Link key={item.path} href={item.path}>
                 <button
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm ${
-                    isActive(item.path)
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm ${isActive(item.path)
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
-                  }`}
+                    }`}
                   data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
                 >
                   <item.icon className="w-4 h-4 flex-shrink-0" />
@@ -201,9 +222,8 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
 
   return (
     <div
-      className={`fixed left-0 top-0 h-screen transition-all duration-300 z-40 bg-sidebar border-r border-sidebar-border ${
-        isExpanded ? "w-64" : "w-20"
-      }`}
+      className={`fixed left-0 top-0 h-screen transition-all duration-300 z-40 bg-sidebar border-r border-sidebar-border ${isExpanded ? "w-64" : "w-20"
+        }`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -224,9 +244,9 @@ export default function Sidebar({ onExpandChange }: SidebarProps = {}) {
 
         {/* Navigation */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          {menuEntries.map((entry) => 
-            isMenuGroup(entry) 
-              ? renderMenuGroup(entry) 
+          {menuEntries.map((entry) =>
+            isMenuGroup(entry)
+              ? renderMenuGroup(entry)
               : renderMenuItem(entry)
           )}
         </nav>

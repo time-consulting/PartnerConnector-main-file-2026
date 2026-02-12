@@ -20,7 +20,8 @@ import {
   Plus,
   Copy,
   CheckCircle,
-  Loader2
+  Loader2,
+  MessageSquare
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -36,6 +37,14 @@ export default function Dashboard() {
     queryKey: ["/api/deals/with-quotes"],
     enabled: isAuthenticated,
   });
+
+  // Unread message count for notification
+  const { data: unreadData } = useQuery({
+    queryKey: ["/api/user/unread-count"],
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+  const unreadMsgCount = (unreadData as any)?.unreadCount || 0;
 
   /*
   // MOCK TEAM DATA
@@ -153,6 +162,29 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          {/* Messages Notification Banner */}
+          {unreadMsgCount > 0 && (
+            <Link href="/messages">
+              <div className="rocket-card p-4 mb-8 cursor-pointer border border-cyan-500/30 hover:border-cyan-400/50 transition-all group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-cyan-400/20 rounded-lg flex items-center justify-center relative">
+                      <MessageSquare className="w-5 h-5 text-cyan-400" />
+                      <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                        {unreadMsgCount}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-white font-semibold">You have {unreadMsgCount} new message{unreadMsgCount !== 1 ? 's' : ''}</p>
+                      <p className="text-gray-500 text-sm">Click to view your conversations with Support</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-cyan-400 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+            </Link>
+          )}
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -303,6 +335,21 @@ export default function Dashboard() {
                     </div>
                     <h3 className="text-white font-semibold mb-1">Quotes</h3>
                     <p className="text-gray-500 text-sm">Manage client quotes</p>
+                  </div>
+                </Link>
+
+                <Link href="/messages">
+                  <div className="rocket-card p-5 cursor-pointer h-full relative">
+                    <div className="rocket-icon-box mb-4">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-white font-semibold mb-1">Messages</h3>
+                    <p className="text-gray-500 text-sm">View support messages</p>
+                    {unreadMsgCount > 0 && (
+                      <span className="absolute top-3 right-3 w-6 h-6 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                        {unreadMsgCount}
+                      </span>
+                    )}
                   </div>
                 </Link>
               </div>
