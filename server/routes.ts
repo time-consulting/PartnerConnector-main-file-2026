@@ -1166,28 +1166,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.id;
 
-      // Get all deals belonging to this user
-      const userDeals = await storage.getDealsWithQuotes(userId);
+      // Import schema tables (db, sql, eq, desc, and are already imported at top of file)
+      const { quoteQA, quotes, deals, dealMessages: dm } = await import("@shared/schema");
 
-      if (!userDeals || userDeals.length === 0) {
-        return res.json([]);
-      }
+      // Get deal messages where the deal belongs to this user
+      const dealMsgs = await db
+        .select({
+          id: dm.id,
+          senderId: dm.senderId,
+          senderName: sql<string>`CASE WHEN ${dm.isAdminMessage} = true THEN 'Support' ELSE ${dm.senderName} END`,
+          isAdmin: dm.isAdminMessage,
+          message: dm.message,
+          read: dm.read,
+          createdAt: dm.createdAt,
+          dealId: dm.dealId,
+          businessName: deals.businessName,
+          source: sql<string>`'deal'`,
+        })
+        .from(dm)
+        .innerJoin(deals, eq(dm.dealId, deals.id))
+        .where(eq(deals.referrerId, userId))
+        .orderBy(desc(dm.createdAt));
 
-      // Fetch messages for each deal using the unified method
-      const allMessages: any[] = [];
-      for (const deal of userDeals) {
-        const dealMessages = await storage.getUnifiedDealMessages(deal.id);
-        // Attach deal info to each message
-        dealMessages.forEach((msg: any) => {
-          allMessages.push({
-            ...msg,
-            dealId: deal.id,
-            businessName: deal.businessName || 'Unknown Deal',
-          });
-        });
-      }
+      // Get quote Q&A messages for deals belonging to this user
+      const quoteMsgs = await db
+        .select({
+          id: quoteQA.id,
+          senderId: quoteQA.authorId,
+          senderName: sql<string>`CASE WHEN ${quoteQA.authorType} = 'admin' THEN 'Support' ELSE COALESCE(${users.firstName} || ' ' || ${users.lastName}, 'Unknown') END`,
+          isAdmin: sql<boolean>`${quoteQA.authorType} = 'admin'`,
+          message: quoteQA.message,
+          read: sql<boolean>`true`,
+          createdAt: quoteQA.createdAt,
+          dealId: deals.id,
+          businessName: deals.businessName,
+          source: sql<string>`'quote'`,
+        })
+        .from(quoteQA)
+        .leftJoin(users, eq(quoteQA.authorId, users.id))
+        .innerJoin(quotes, eq(quoteQA.quoteId, quotes.id))
+        .innerJoin(deals, eq(quotes.referralId, deals.id))
+        .where(eq(deals.referrerId, userId))
+        .orderBy(desc(quoteQA.createdAt));
 
-      // Sort by most recent first
+      // Merge and sort
+      const allMessages = [...dealMsgs, ...quoteMsgs];
       allMessages.sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -1205,21 +1228,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/user/unread-count', requireAuth, async (req: any, res) => {
     try {
       const userId = req.user.id;
+      const { dealMessages: dm, deals: dealsTable } = await import("@shared/schema");
 
-      // Get all deals belonging to this user
-      const userDeals = await storage.getDealsWithQuotes(userId);
+      // Count unread admin messages directly via JOIN
+      const result = await db
+        .select({
+          count: sql<number>`COUNT(*)`,
+        })
+        .from(dm)
+        .innerJoin(dealsTable, eq(dm.dealId, dealsTable.id))
+        .where(
+          and(
+            eq(dealsTable.referrerId, userId),
+            eq(dm.isAdminMessage, true),
+            eq(dm.read, false)
+          )
+        );
 
-      if (!userDeals || userDeals.length === 0) {
-        return res.json({ unreadCount: 0 });
-      }
-
-      let unreadCount = 0;
-      for (const deal of userDeals) {
-        const dealMessages = await storage.getUnifiedDealMessages(deal.id);
-        // Count unread admin messages (messages FROM admin TO partner)
-        unreadCount += dealMessages.filter((msg: any) => msg.isAdmin && !msg.read).length;
-      }
-
+      const unreadCount = result[0]?.count || 0;
       res.json({ unreadCount });
     } catch (error) {
       console.error("Error fetching unread count:", error);
