@@ -10,7 +10,7 @@ import {
     Building, Bot, User, Inbox, CheckCheck, Filter
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +31,18 @@ export default function UserMessagesPage() {
     });
 
     const messages = rawMessages as any[];
+
+    // Mark all messages as read when page loads and messages are fetched
+    useEffect(() => {
+        if (!isLoading && messages.length > 0) {
+            apiRequest("PATCH", "/api/user/messages/mark-all-read")
+                .then(() => {
+                    queryClient.invalidateQueries({ queryKey: ["/api/user/messages"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/user/unread-count"] });
+                })
+                .catch((err) => console.error("Failed to mark all as read:", err));
+        }
+    }, [isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Group messages by dealId for thread view
     const messagesByDeal = messages.reduce((acc: Record<string, any[]>, msg: any) => {

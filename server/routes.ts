@@ -1192,6 +1192,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark ALL user's messages as read (clears historical unread count)
+  // NOTE: This MUST be registered BEFORE the :dealId/read route below
+  app.patch('/api/user/messages/mark-all-read', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get all deal IDs belonging to this user
+      const userDeals = await storage.getDealsWithQuotes(userId);
+      const dealIds = userDeals.map((d: any) => d.id);
+
+      if (dealIds.length === 0) {
+        return res.json({ success: true });
+      }
+
+      // Direct SQL: mark all unread admin messages across all user's deals as read
+      const { dealMessages: dmTable } = await import("@shared/schema");
+      const { inArray } = await import("drizzle-orm");
+      await db
+        .update(dmTable)
+        .set({ read: true })
+        .where(
+          and(
+            inArray(dmTable.dealId, dealIds),
+            eq(dmTable.isAdminMessage, true),
+            eq(dmTable.read, false)
+          )
+        );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking all messages as read:", error);
+      res.status(500).json({ message: "Failed to mark all as read" });
+    }
+  });
+
   // Mark all messages for a specific deal as read (user side)
   app.patch('/api/user/messages/:dealId/read', requireAuth, async (req: any, res) => {
     try {
@@ -1206,17 +1241,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Unauthorized" });
       }
 
-      // Get all messages for this deal and mark admin ones as read
-      const allMessages = await storage.getAllUnifiedMessages();
-      const dealMessages = allMessages.filter((msg: any) =>
-        msg.dealId === dealId && msg.authorType === 'admin' && !msg.read && msg.source === 'deal'
-      );
+      // Direct SQL: mark all unread admin messages for this deal as read
+      const { dealMessages: dmTable } = await import("@shared/schema");
+      await db
+        .update(dmTable)
+        .set({ read: true })
+        .where(
+          and(
+            eq(dmTable.dealId, dealId),
+            eq(dmTable.isAdminMessage, true),
+            eq(dmTable.read, false)
+          )
+        );
 
-      for (const msg of dealMessages) {
-        await storage.markMessageAsRead(msg.id, 'deal');
-      }
-
-      res.json({ success: true, markedCount: dealMessages.length });
+      res.json({ success: true });
     } catch (error) {
       console.error("Error marking messages as read:", error);
       res.status(500).json({ message: "Failed to mark messages as read" });
