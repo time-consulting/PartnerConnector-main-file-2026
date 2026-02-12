@@ -1264,7 +1264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newMessage = await storage.createDealMessage({
         dealId: dealId,
         senderId: req.user.id,
-        senderName: `${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.email,
+        senderName: isAdmin ? 'Support' : (`${req.user.firstName || ''} ${req.user.lastName || ''}`.trim() || req.user.email),
         senderEmail: req.user.email,
         isAdminMessage: isAdmin,
         messageType: 'chat',
