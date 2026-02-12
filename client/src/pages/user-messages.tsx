@@ -104,6 +104,8 @@ export default function UserMessagesPage() {
     };
 
     const toggleThread = (dealId: string) => {
+        const isCurrentlyExpanded = expandedThreads.has(dealId);
+
         setExpandedThreads(prev => {
             const next = new Set(prev);
             if (next.has(dealId)) {
@@ -113,6 +115,17 @@ export default function UserMessagesPage() {
             }
             return next;
         });
+
+        // Mark messages as read when EXPANDING the thread
+        if (!isCurrentlyExpanded) {
+            apiRequest("PATCH", `/api/user/messages/${dealId}/read`)
+                .then(() => {
+                    // Refresh messages and unread count after marking as read
+                    queryClient.invalidateQueries({ queryKey: ["/api/user/messages"] });
+                    queryClient.invalidateQueries({ queryKey: ["/api/user/unread-count"] });
+                })
+                .catch((err) => console.error("Failed to mark messages as read:", err));
+        }
     };
 
     const tabItems: { key: FilterTab; label: string; count: number; icon: any }[] = [
@@ -161,18 +174,18 @@ export default function UserMessagesPage() {
                                 key={tab.key}
                                 onClick={() => setActiveTab(tab.key)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === tab.key
-                                        ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
-                                        : "bg-card text-muted-foreground border border-border hover:bg-secondary hover:text-foreground"
+                                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/25"
+                                    : "bg-card text-muted-foreground border border-border hover:bg-secondary hover:text-foreground"
                                     }`}
                             >
                                 <tab.icon className="w-4 h-4" />
                                 {tab.label}
                                 {tab.count > 0 && (
                                     <span className={`text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.key
-                                            ? "bg-primary-foreground/20 text-primary-foreground"
-                                            : tab.key === "unread" && tab.count > 0
-                                                ? "bg-red-500/20 text-red-400"
-                                                : "bg-muted text-muted-foreground"
+                                        ? "bg-primary-foreground/20 text-primary-foreground"
+                                        : tab.key === "unread" && tab.count > 0
+                                            ? "bg-red-500/20 text-red-400"
+                                            : "bg-muted text-muted-foreground"
                                         }`}>
                                         {tab.count}
                                     </span>

@@ -1192,6 +1192,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mark all messages for a specific deal as read (user side)
+  app.patch('/api/user/messages/:dealId/read', requireAuth, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const { dealId } = req.params;
+
+      // Verify this deal belongs to the user
+      const userDeals = await storage.getDealsWithQuotes(userId);
+      const dealBelongsToUser = userDeals.some((d: any) => d.id === dealId);
+
+      if (!dealBelongsToUser) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Get all messages for this deal and mark admin ones as read
+      const allMessages = await storage.getAllUnifiedMessages();
+      const dealMessages = allMessages.filter((msg: any) =>
+        msg.dealId === dealId && msg.authorType === 'admin' && !msg.read && msg.source === 'deal'
+      );
+
+      for (const msg of dealMessages) {
+        await storage.markMessageAsRead(msg.id, 'deal');
+      }
+
+      res.json({ success: true, markedCount: dealMessages.length });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+      res.status(500).json({ message: "Failed to mark messages as read" });
+    }
+  });
+
   // Get unread message count for the logged-in partner
   app.get('/api/user/unread-count', requireAuth, async (req: any, res) => {
     try {
