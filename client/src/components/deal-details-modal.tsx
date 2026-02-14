@@ -282,7 +282,10 @@ export default function DealDetailsModal({ isOpen, onClose, deal, showQuoteBuild
   });
 
   const handleQuoteCreated = (quoteId: string) => {
+    // Invalidate all relevant query keys so both admin pipeline and partner views refresh
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/referrals'] });
     queryClient.invalidateQueries({ queryKey: ['/api/admin/deals'] });
+    queryClient.invalidateQueries({ queryKey: ['/api/deals'] });
     toast({
       title: "Quote Generated",
       description: `Quote sent successfully to ${deal.businessEmail}`,
