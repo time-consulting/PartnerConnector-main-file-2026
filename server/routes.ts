@@ -2,7 +2,7 @@ import type { Express, RequestHandler } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, requireAuth } from "./auth";
-import { insertDealSchema, insertContactSchema, insertOpportunitySchema, insertWaitlistSchema, insertPushSubscriptionSchema, mapDealStageToCustomerJourney, quotes, paymentSplits, commissionPayments, users } from "@shared/schema";
+import { insertDealSchema, insertContactSchema, insertOpportunitySchema, insertWaitlistSchema, insertPushSubscriptionSchema, mapDealStageToCustomerJourney, deals, quotes, paymentSplits, commissionPayments, users } from "@shared/schema";
 import { fromZodError } from "zod-validation-error";
 import { emailService } from "./emailService";
 import { ghlEmailService } from "./ghlEmailService";
@@ -1258,8 +1258,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/quotes/:id/approve', requireAuth, async (req: any, res) => {
     try {
-      await storage.approveQuoteByPartner(req.params.id);
-      res.json({ success: true });
+      const quoteId = req.params.id;
+
+      // Get the quote to find the deal
+      const [quote] = await db.select().from(quotes).where(eq(quotes.id, quoteId)).limit(1);
+      if (!quote) {
+        return res.status(404).json({ message: "Quote not found" });
+      }
+
+      // Get the deal to check if it's a funding deal
+      const [deal] = await db.select().from(deals).where(eq(deals.id, quote.referralId)).limit(1);
+      const isFundingDeal = deal && (
+        deal.productType === 'business_funding' ||
+        (deal.selectedProducts && Array.isArray(deal.selectedProducts) && deal.selectedProducts.includes('business-funding')) ||
+        (deal as any).quoteType === 'business_funding' ||
+        (deal as any).quoteType === 'funding_with_cards'
+      );
+
+      if (isFundingDeal) {
+        // For funding deals: skip quote_approved (awaiting signup) and go straight to signup_submitted
+        // The business info was already provided in the deal submission - no additional signup form needed
+
+        // Update quote status
+        await db
+          .update(quotes)
+          .set({
+            customerJourneyStatus: 'awaiting_signup',
+            approvedAt: new Date(),
+            viewedAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(quotes.id, quoteId));
+
+        // Move deal straight to signup_submitted (skipping quote_approved)
+        await db
+          .update(deals)
+          .set({
+            dealStage: 'signup_submitted',
+            signupCompletedAt: new Date(), // Mark as completed since info was in original submission
+            adminNotes: (deal.adminNotes || '') + `\n[${new Date().toLocaleString()}] Funding application approved by partner. Skipped signup (info provided at submission). Moved directly to Signup Submitted.`,
+            updatedAt: new Date()
+          })
+          .where(eq(deals.id, quote.referralId));
+
+        console.log(`Funding deal ${quote.referralId} approved by partner - skipped to signup_submitted`);
+
+        // Notify admins
+        try {
+          const admins = await storage.getAdminUsers();
+          for (const admin of admins) {
+            await createNotificationForUser(admin.id, {
+              type: 'status_update',
+              title: 'Funding Application Approved',
+              message: `${deal.businessName} has approved their funding application. Ready for processing - signup skipped (existing Dojo customer).`,
+              dealId: deal.id,
+              businessName: deal.businessName,
+            });
+          }
+        } catch (notifErr) {
+          console.error('Failed to create admin notifications for funding approval:', notifErr);
+        }
+      } else {
+        // Card payment deals: normal flow → quote_approved (awaiting signup form)
+        await storage.approveQuoteByPartner(quoteId);
+      }
+
+      res.json({ success: true, isFundingDeal });
     } catch (error) {
       console.error("Error approving quote:", error);
       res.status(500).json({ message: "Failed to approve quote" });
