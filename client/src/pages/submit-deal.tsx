@@ -32,7 +32,8 @@ import {
   Phone,
   Mail,
   MapPin,
-  Info
+  Info,
+  Megaphone
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -52,10 +53,11 @@ const fadeInUp = {
 const services = [
   { id: 'card-payments', name: 'Card Payments', icon: CreditCard, description: 'Accept card payments with competitive rates', gradient: 'from-rose-500 via-pink-500 to-purple-500' },
   { id: 'business-funding', name: 'Business Funding', icon: DollarSign, description: 'Fast business loans and funding solutions', gradient: 'from-lime-400 via-green-500 to-emerald-600' },
-  { id: 'ai-automation', name: 'AI Automation', icon: Bot, description: 'Automate workflows with AI technology', gradient: 'from-violet-500 via-purple-500 to-fuchsia-500' },
+  { id: 'business-automation', name: 'Business Automation', icon: Bot, description: 'Automate workflows with AI technology', gradient: 'from-violet-500 via-purple-500 to-fuchsia-500' },
   { id: 'epos', name: 'EPOS', icon: Monitor, description: 'Modern point of sale systems', gradient: 'from-cyan-400 via-blue-500 to-indigo-600' },
   { id: 'websites', name: 'Websites', icon: Globe, description: 'Professional website design and hosting', gradient: 'from-amber-400 via-orange-500 to-red-500' },
-  { id: 'restaurant-booking', name: 'Restaurant Booking', icon: Calendar, description: 'Table reservation management software', gradient: 'from-teal-400 via-cyan-500 to-blue-500' },
+  { id: 'bookings', name: 'Bookings', icon: Calendar, description: 'Table reservation & booking management', gradient: 'from-teal-400 via-cyan-500 to-blue-500' },
+  { id: 'marketing', name: 'Marketing', icon: Megaphone, description: 'Social media, digital marketing & campaigns', gradient: 'from-pink-400 via-rose-500 to-red-500' },
 ];
 
 const volumeOptions = [
@@ -245,10 +247,9 @@ export default function SubmitDeal() {
       const serviceToProductType: Record<string, string> = {
         'bookings': 'bookings',
         'websites': 'websites',
-        'ai-marketing': 'ai_marketing',
-        'ai-automation': 'ai_automation',
+        'business-automation': 'business_automation',
+        'marketing': 'marketing',
         'epos': 'epos',
-        'restaurant-booking': 'restaurant_bookings',
       };
       determinedProductType = serviceToProductType[selectedServices[0]] || 'card_payments';
     }

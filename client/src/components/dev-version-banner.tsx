@@ -13,9 +13,9 @@
 // ============================================================
 // 🔄 UPDATE THESE ON EVERY PUSH
 // ============================================================
-const BUILD_VERSION = "v1.0.2";
-const BUILD_CHANGES = "AI automation product types, consultation auto-flow, dynamic admin badges";
-const BUILD_TIMESTAMP = "2026-02-16 17:35";
+const BUILD_VERSION = "v1.0.3";
+const BUILD_CHANGES = "Consolidated product types: Business Automation, Marketing, Bookings";
+const BUILD_TIMESTAMP = "2026-02-16 17:46";
 // ============================================================
 
 export default function DevVersionBanner() {

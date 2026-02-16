@@ -1112,14 +1112,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Auto-push consultation-type products to quote_sent (requires a scheduled call / demo)
-      const consultationProducts = ['ai_automation', 'epos', 'websites', 'restaurant_bookings', 'bookings'];
+      const consultationProducts = ['business_automation', 'marketing', 'epos', 'websites', 'bookings'];
       if (deal.productType && consultationProducts.includes(deal.productType) && !isAutoQuoteEligible) {
         try {
           const productLabel = {
-            ai_automation: 'AI Automation',
+            business_automation: 'Business Automation',
+            marketing: 'Marketing',
             epos: 'EPOS',
             websites: 'Website',
-            restaurant_bookings: 'Restaurant Booking',
             bookings: 'Booking System',
           }[deal.productType] || deal.productType;
 

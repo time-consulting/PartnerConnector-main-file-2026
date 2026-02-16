@@ -21,10 +21,9 @@ export const PRODUCT_TYPES = [
   'business_funding',
   'bookings',
   'websites',
-  'ai_marketing',
-  'ai_automation',
+  'business_automation',
+  'marketing',
   'epos',
-  'restaurant_bookings',
 ] as const;
 
 export type ProductType = typeof PRODUCT_TYPES[number];
@@ -279,10 +278,9 @@ export const PRODUCT_CONFIG: Record<ProductType, { label: string; icon: string; 
   business_funding: { label: 'Business Funding', icon: 'Banknote', color: 'text-green-400' },
   bookings: { label: 'Bookings', icon: 'Calendar', color: 'text-purple-400' },
   websites: { label: 'Websites', icon: 'Globe', color: 'text-cyan-400' },
-  ai_marketing: { label: 'AI Marketing', icon: 'Sparkles', color: 'text-pink-400' },
-  ai_automation: { label: 'AI Automation', icon: 'Bot', color: 'text-violet-400' },
+  business_automation: { label: 'Business Automation', icon: 'Bot', color: 'text-violet-400' },
+  marketing: { label: 'Marketing', icon: 'Megaphone', color: 'text-pink-400' },
   epos: { label: 'EPOS', icon: 'Monitor', color: 'text-indigo-400' },
-  restaurant_bookings: { label: 'Restaurant Bookings', icon: 'Calendar', color: 'text-teal-400' },
 };
 
 /**
@@ -290,10 +288,10 @@ export const PRODUCT_CONFIG: Record<ProductType, { label: string; icon: string; 
  * These auto-push to quote_sent with call-scheduling instructions on submission.
  */
 export const CONSULTATION_PRODUCTS: ReadonlySet<string> = new Set([
-  'ai_automation',
+  'business_automation',
+  'marketing',
   'epos',
   'websites',
-  'restaurant_bookings',
   'bookings',
 ]);
 
@@ -308,10 +306,16 @@ export const PRODUCT_STAGE_LABELS: Partial<Record<ProductType, Partial<Record<De
     approved: 'Funding Agreed',
     live_confirm_ltr: 'Funds Received – Live',
   },
-  ai_automation: {
+  business_automation: {
     quote_sent: 'Consultation Scheduled',
     quote_approved: 'Requirements Confirmed',
     approved: 'Project Approved',
+    live_confirm_ltr: 'Live',
+  },
+  marketing: {
+    quote_sent: 'Consultation Scheduled',
+    quote_approved: 'Campaign Agreed',
+    approved: 'Campaign Approved',
     live_confirm_ltr: 'Live',
   },
   epos: {
@@ -325,12 +329,6 @@ export const PRODUCT_STAGE_LABELS: Partial<Record<ProductType, Partial<Record<De
     quote_approved: 'Quote Accepted',
     approved: 'Project Approved',
     live_confirm_ltr: 'Website Live',
-  },
-  restaurant_bookings: {
-    quote_sent: 'Demo Scheduled',
-    quote_approved: 'Quote Accepted',
-    approved: 'Setup Approved',
-    live_confirm_ltr: 'Live',
   },
   bookings: {
     quote_sent: 'Demo Scheduled',
