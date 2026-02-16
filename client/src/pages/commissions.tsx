@@ -184,7 +184,7 @@ export default function CommissionsPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar onExpandChange={setSidebarExpanded} />
-      <div className={`transition-all duration-300 ${sidebarExpanded ? 'ml-64' : 'ml-20'} p-6`}>
+      <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'} p-4 md:p-6`}>
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div>
@@ -293,73 +293,75 @@ export default function CommissionsPage() {
                       No commission payments yet
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border hover:bg-secondary/50">
-                          <TableHead className="text-muted-foreground">Business Name</TableHead>
-                          <TableHead className="text-muted-foreground">Type</TableHead>
-                          <TableHead className="text-muted-foreground">Commission status</TableHead>
-                          <TableHead className="text-muted-foreground">Payment status</TableHead>
-                          <TableHead className="text-muted-foreground">Created</TableHead>
-                          <TableHead className="text-right text-muted-foreground">Amount</TableHead>
-                          <TableHead className="text-muted-foreground">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {payments.map((payment: any) => (
-                          <TableRow key={payment.id} className="border-border hover:bg-secondary/30">
-                            <TableCell className="font-medium text-foreground">{payment.businessName || "N/A"}</TableCell>
-                            <TableCell>
-                              <span className="text-sm text-muted-foreground">{getLevelLabel(payment.level)}</span>
-                            </TableCell>
-                            <TableCell>{getStatusBadge(payment)}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="border-border text-foreground">{payment.paymentStatus}</Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {payment.createdAt ? format(new Date(payment.createdAt), 'dd MMM yyyy') : 'N/A'}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-primary">
-                              £{parseFloat(payment.amount).toFixed(2)}
-                            </TableCell>
-                            <TableCell>
-                              {payment.approvalStatus === 'pending' && (
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                    onClick={() => handleApprove(payment.id)}
-                                    disabled={approveMutation.isPending}
-                                    data-testid={`button-approve-${payment.id}`}
-                                  >
-                                    <CheckCircle2 className="w-4 h-4 mr-1" />
-                                    Approve
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="border-border hover:bg-secondary"
-                                    onClick={() => {
-                                      setSelectedPayment(payment);
-                                      setQueryDialogOpen(true);
-                                    }}
-                                    data-testid={`button-query-${payment.id}`}
-                                  >
-                                    <AlertCircle className="w-4 h-4 mr-1" />
-                                    Query
-                                  </Button>
-                                </div>
-                              )}
-                              {payment.approvalStatus === 'queried' && (
-                                <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
-                                  Query submitted
-                                </Badge>
-                              )}
-                            </TableCell>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border hover:bg-secondary/50">
+                            <TableHead className="text-muted-foreground">Business Name</TableHead>
+                            <TableHead className="text-muted-foreground">Type</TableHead>
+                            <TableHead className="text-muted-foreground">Commission status</TableHead>
+                            <TableHead className="text-muted-foreground">Payment status</TableHead>
+                            <TableHead className="text-muted-foreground">Created</TableHead>
+                            <TableHead className="text-right text-muted-foreground">Amount</TableHead>
+                            <TableHead className="text-muted-foreground">Actions</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {payments.map((payment: any) => (
+                            <TableRow key={payment.id} className="border-border hover:bg-secondary/30">
+                              <TableCell className="font-medium text-foreground">{payment.businessName || "N/A"}</TableCell>
+                              <TableCell>
+                                <span className="text-sm text-muted-foreground">{getLevelLabel(payment.level)}</span>
+                              </TableCell>
+                              <TableCell>{getStatusBadge(payment)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="border-border text-foreground">{payment.paymentStatus}</Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {payment.createdAt ? format(new Date(payment.createdAt), 'dd MMM yyyy') : 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-primary">
+                                £{parseFloat(payment.amount).toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {payment.approvalStatus === 'pending' && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                      onClick={() => handleApprove(payment.id)}
+                                      disabled={approveMutation.isPending}
+                                      data-testid={`button-approve-${payment.id}`}
+                                    >
+                                      <CheckCircle2 className="w-4 h-4 mr-1" />
+                                      Approve
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="border-border hover:bg-secondary"
+                                      onClick={() => {
+                                        setSelectedPayment(payment);
+                                        setQueryDialogOpen(true);
+                                      }}
+                                      data-testid={`button-query-${payment.id}`}
+                                    >
+                                      <AlertCircle className="w-4 h-4 mr-1" />
+                                      Query
+                                    </Button>
+                                  </div>
+                                )}
+                                {payment.approvalStatus === 'queried' && (
+                                  <Badge variant="outline" className="border-yellow-500/50 text-yellow-400">
+                                    Query submitted
+                                  </Badge>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -383,42 +385,44 @@ export default function CommissionsPage() {
                       <p className="text-sm mt-2">Approved commissions will appear here once paid</p>
                     </div>
                   ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-border hover:bg-secondary/50">
-                          <TableHead className="text-muted-foreground">Business Name</TableHead>
-                          <TableHead className="text-muted-foreground">Type</TableHead>
-                          <TableHead className="text-muted-foreground">Deal Stage</TableHead>
-                          <TableHead className="text-muted-foreground">Payment Date</TableHead>
-                          <TableHead className="text-muted-foreground">Transfer Reference</TableHead>
-                          <TableHead className="text-right text-muted-foreground">Amount</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {withdrawnPayments.map((payment: any) => (
-                          <TableRow key={payment.id} className="border-border hover:bg-secondary/30">
-                            <TableCell className="font-medium text-foreground">{payment.businessName || "N/A"}</TableCell>
-                            <TableCell>
-                              <span className="text-sm text-muted-foreground">{getLevelLabel(payment.level)}</span>
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
-                                Live-Paid
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yyyy, HH:mm') : 'N/A'}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {payment.transferReference || '-'}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-primary">
-                              £{parseFloat(payment.amount).toFixed(2)}
-                            </TableCell>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-border hover:bg-secondary/50">
+                            <TableHead className="text-muted-foreground">Business Name</TableHead>
+                            <TableHead className="text-muted-foreground">Type</TableHead>
+                            <TableHead className="text-muted-foreground">Deal Stage</TableHead>
+                            <TableHead className="text-muted-foreground">Payment Date</TableHead>
+                            <TableHead className="text-muted-foreground">Transfer Reference</TableHead>
+                            <TableHead className="text-right text-muted-foreground">Amount</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {withdrawnPayments.map((payment: any) => (
+                            <TableRow key={payment.id} className="border-border hover:bg-secondary/30">
+                              <TableCell className="font-medium text-foreground">{payment.businessName || "N/A"}</TableCell>
+                              <TableCell>
+                                <span className="text-sm text-muted-foreground">{getLevelLabel(payment.level)}</span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50">
+                                  Live-Paid
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {payment.paymentDate ? format(new Date(payment.paymentDate), 'dd MMM yyyy, HH:mm') : 'N/A'}
+                              </TableCell>
+                              <TableCell className="text-sm text-muted-foreground">
+                                {payment.transferReference || '-'}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-primary">
+                                £{parseFloat(payment.amount).toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   )}
                 </CardContent>
               </Card>

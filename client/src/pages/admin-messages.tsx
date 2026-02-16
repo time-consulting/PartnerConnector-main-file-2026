@@ -131,7 +131,7 @@ export default function AdminMessagesPage() {
     return (
       <div className="min-h-screen bg-background">
         <Sidebar onExpandChange={setSidebarExpanded} />
-        <div className={sidebarExpanded ? 'ml-64' : 'ml-20'}>
+        <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}>
           <div className="p-6 lg:p-8">
             <Card className="bg-card border-border">
               <CardContent className="p-8 text-center">
@@ -148,7 +148,7 @@ export default function AdminMessagesPage() {
   return (
     <div className="min-h-screen bg-background">
       <Sidebar onExpandChange={setSidebarExpanded} />
-      <div className={sidebarExpanded ? 'ml-64' : 'ml-20'}>
+      <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="p-6 lg:p-8">
           {/* Header */}
           <div className="mb-8">

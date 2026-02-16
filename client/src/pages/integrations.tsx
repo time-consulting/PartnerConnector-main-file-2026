@@ -7,7 +7,7 @@ import Sidebar from "@/components/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
+import {
   Settings,
   Link2,
   Unlink,
@@ -58,7 +58,7 @@ const integrationProviders = [
     description: 'Connect your Xero account for seamless accounting',
     icon: () => (
       <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 16.894l-2.12-2.12L12 18.547l-3.774-3.773-2.12 2.12L12 22.787l5.894-5.893zM12 1.213l5.894 5.893-2.12 2.12L12 5.453 8.226 9.226l-2.12-2.12L12 1.213z"/>
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 16.894l-2.12-2.12L12 18.547l-3.774-3.773-2.12 2.12L12 22.787l5.894-5.893zM12 1.213l5.894 5.893-2.12 2.12L12 5.453 8.226 9.226l-2.12-2.12L12 1.213z" />
       </svg>
     ),
     color: 'from-cyan-500 to-blue-600',
@@ -71,7 +71,7 @@ const integrationProviders = [
     description: 'Integrate with Sage accounting for UK businesses',
     icon: () => (
       <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z" />
       </svg>
     ),
     color: 'from-emerald-500 to-green-600',
@@ -84,7 +84,7 @@ const integrationProviders = [
     description: 'Cloud accounting made simple with FreshBooks',
     icon: () => (
       <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
       </svg>
     ),
     color: 'from-blue-500 to-indigo-600',
@@ -210,8 +210,8 @@ export default function Integrations() {
   return (
     <div className="min-h-screen bg-[#0f1419]">
       <Sidebar onExpandChange={setSidebarExpanded} />
-      
-      <div className={sidebarExpanded ? 'ml-64' : 'ml-20'}>
+
+      <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="p-6 lg:p-8">
           <motion.div
             initial="hidden"
@@ -262,8 +262,8 @@ export default function Integrations() {
                   const Icon = provider.icon;
 
                   return (
-                    <Card 
-                      key={provider.id} 
+                    <Card
+                      key={provider.id}
                       className="bg-[#1a1f26] border-[#2a3441] rounded-2xl overflow-hidden hover:border-[#3a4451] transition-colors"
                       data-testid={`integration-card-${provider.id}`}
                     >
@@ -349,7 +349,7 @@ export default function Integrations() {
                           <div className="mb-4">
                             <div className="flex flex-wrap gap-2">
                               {provider.features.map((feature) => (
-                                <span 
+                                <span
                                   key={feature}
                                   className="text-xs px-2 py-1 bg-[#2a3441] text-gray-400 rounded-full"
                                 >
@@ -449,8 +449,8 @@ export default function Integrations() {
                       <p className="text-gray-400 text-sm">
                         To enable integrations, you'll need to configure API credentials for each provider. Contact our support team to get started with setting up your accounting integrations.
                       </p>
-                      <a 
-                        href="/help-center" 
+                      <a
+                        href="/help-center"
                         className="inline-flex items-center gap-1 text-amber-400 hover:text-amber-300 text-sm mt-2"
                       >
                         Learn more <ExternalLink className="w-3 h-3" />

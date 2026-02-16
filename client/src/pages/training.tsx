@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   GraduationCapIcon,
   BookOpenIcon,
   HelpCircleIcon,
@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Training() {
   const { toast } = useToast();
   const [activeSection, setActiveSection] = useState("dashboard");
-  
+
   const [userProgress, setUserProgress] = useState({
     completedModules: 15,
     totalModules: 24,
@@ -36,7 +36,7 @@ export default function Training() {
       ...prev,
       completedModules: prev.completedModules + 1
     }));
-    
+
     toast({
       title: "Module Complete!",
       description: "Great work! Keep going to complete your training.",
@@ -51,7 +51,7 @@ export default function Training() {
     <div className="min-h-screen bg-background">
       <Sidebar onExpandChange={setSidebarExpanded} />
 
-      <div className={`transition-all duration-300 ${sidebarExpanded ? 'ml-64' : 'ml-20'} p-4 lg:p-6`}>
+      <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'} p-4 lg:p-6`}>
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Simple Header */}
           <div className="text-center space-y-4">
@@ -63,7 +63,7 @@ export default function Training() {
                 Complete your training to become a successful PartnerConnector partner
               </p>
             </div>
-            
+
             {/* Simple Progress Card */}
             <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-white/20 shadow-lg max-w-2xl mx-auto">
               <CardContent className="p-6">
@@ -84,7 +84,7 @@ export default function Training() {
                       {progressPercentage.toFixed(0)}%
                     </Badge>
                   </div>
-                  
+
                   <div>
                     <Progress value={progressPercentage} className="h-3" data-testid="progress-bar" />
                     <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
@@ -126,11 +126,10 @@ export default function Training() {
                     key={section.id}
                     onClick={() => setActiveSection(section.id)}
                     variant={activeSection === section.id ? 'default' : 'ghost'}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${
-                      activeSection === section.id 
-                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md' 
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${activeSection === section.id
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
                         : 'hover:bg-gray-100 dark:hover:bg-slate-700'
-                    }`}
+                      }`}
                     data-testid={`nav-${section.id}`}
                   >
                     {section.icon}
@@ -301,8 +300,8 @@ export default function Training() {
                         Welcome to Your Training Journey
                       </h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Complete the training modules to learn everything you need to know about Dojo payment solutions 
-                        and how to use the PartnerConnector platform effectively. Take your time and refer back to these 
+                        Complete the training modules to learn everything you need to know about Dojo payment solutions
+                        and how to use the PartnerConnector platform effectively. Take your time and refer back to these
                         resources whenever you need them.
                       </p>
                     </div>

@@ -248,7 +248,7 @@ export default function TeamManagement() {
     <div className="min-h-screen bg-[#0f1419]">
       <Sidebar onExpandChange={setSidebarExpanded} />
 
-      <div className={sidebarExpanded ? 'ml-64' : 'ml-20'}>
+      <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'}`}>
         <div className="p-6 lg:p-8">
           <motion.div
             initial="hidden"

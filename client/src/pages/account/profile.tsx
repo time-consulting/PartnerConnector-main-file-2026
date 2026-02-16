@@ -54,7 +54,7 @@ export default function ProfilePage() {
     <div className="min-h-screen bg-background">
       <Sidebar onExpandChange={setSidebarExpanded} />
 
-      <div className={`transition-all duration-300 ${sidebarExpanded ? 'ml-64' : 'ml-20'} max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8`}>
+      <div className={`transition-all duration-300 ml-0 ${sidebarExpanded ? 'md:ml-64' : 'md:ml-20'} max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8`}>
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <User className="w-8 h-8" />
