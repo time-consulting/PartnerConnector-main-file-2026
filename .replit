@@ -44,3 +44,8 @@ externalPort = 80
 
 [objectStorage]
 defaultBucketID = "replit-objstore-51c27821-287b-41ae-92a7-512cb070f859"
+
+[userenv]
+
+[userenv.shared]
+GHL_FROM_EMAIL = "partnerships@partnerconnector.co.uk"
