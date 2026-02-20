@@ -154,12 +154,28 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
-  const port = parseInt(process.env.PORT || '5000', 10);
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+  // Function to start server with port finding
+  const startServer = (initialPort: number) => {
+    const tryPort = (port: number) => {
+      server.listen({
+        port,
+        host: "0.0.0.0",
+        reusePort: true,
+      }, () => {
+        log(`serving on port ${port}`);
+      }).on('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+          log(`Port ${port} is busy, trying ${port + 1}...`);
+          tryPort(port + 1);
+        } else {
+          console.error("Server failed to start:", err);
+        }
+      });
+    };
+
+    tryPort(initialPort);
+  };
+
+  const overridePort = process.env.PORT ? parseInt(process.env.PORT, 10) : 5000;
+  startServer(overridePort);
 })();
